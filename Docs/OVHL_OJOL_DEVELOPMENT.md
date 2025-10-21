@@ -37,6 +37,26 @@ If you are an AI successor:
 
 ---
 
+## 🌳 Workflow & Aturan Git (Git Flow)
+Untuk menjaga stabilitas dan kerapian proyek, kita mengadopsi alur kerja Git Flow yang disederhanakan. Semua pengembang (termasuk AI) wajib mengikuti aturan ini:
+
+1.  **Branch `main`:**
+    * **Tujuan:** Hanya berisi kode versi rilis yang sudah stabil dan teruji penuh.
+    * **Aturan:** DILARANG melakukan *commit* atau *push* langsung ke `main`. Branch ini hanya menerima *merge* dari `develop` saat akan merilis versi baru.
+
+2.  **Branch `develop`:**
+    * **Tujuan:** Bertindak sebagai "dapur utama" atau cabang integrasi. Berisi gabungan semua fitur yang sudah selesai dikerjakan dan siap untuk diuji bersama.
+    * **Aturan:** Menerima *merge* dari branch `feature/...` yang sudah selesai. Semua branch fitur baru harus dibuat dari `develop`.
+
+3.  **Branch `feature/...` (Contoh: `feature/gameplay-loop-v1`):**
+    * **Tujuan:** Untuk mengerjakan fitur baru yang spesifik. Setiap fitur besar harus punya branch-nya sendiri.
+    * **Aturan:** Selalu dibuat dari `develop`. Setelah fitur selesai dan dites, harus di-*merge* kembali ke `develop`.
+
+**Alur Kerja Standar:**
+`git checkout develop` → `git checkout -b feature/nama-fitur-baru` → (Kerjakan Fitur) → `git checkout develop` → `git merge feature/nama-fitur-baru`
+
+---
+
 ## 🎮 Game Overview: Ojol Roleplay
 
 ### Concept

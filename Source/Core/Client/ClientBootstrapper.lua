@@ -3,11 +3,11 @@
 	@project OVHL_OJOL
 	@file ClientBootstrapper.lua
 	@author OmniverseHighland + AI Co-Dev System
-	@version 1.0.1
+	@version 1.0.2
 	
 	@description
-	Entry point terstruktur untuk sisi client. Memuat service,
-	controller, dan modul UI dalam urutan yang benar.
+	Entry point client. Versi ini menambahkan inisialisasi
+	untuk OrderController.
 ]]
 
 local Core = game:GetService("ReplicatedStorage"):WaitForChild("Core")
@@ -17,6 +17,7 @@ local UIManager = require(Core.Client.Services.UIManager)
 
 -- Client Controllers
 local PlayerDataController = require(Core.Client.Controllers.PlayerDataController)
+local OrderController = require(Core.Client.Controllers.OrderController)
 
 -- Client UI Modules
 local MainHUD = require(Core.Client.UI.MainHUD)
@@ -35,6 +36,7 @@ function ClientBootstrapper:Start()
 	
 	-- 2. Inisialisasi Controller
 	PlayerDataController:Init(dependencies)
+	OrderController:Init(dependencies) -- Inisialisasi controller baru
 	
 	-- 3. Inisialisasi Modul UI
 	MainHUD:Init(dependencies)
