@@ -1,65 +1,40 @@
 --!strict
 --[[
-	@project OVHL_OJOL
-	@file OrderController.lua (Client)
-	@author OmniverseHighland + AI Co-Dev System
-	@version 1.2.0
-	
-	@description
-	Mengelola logika order di client. Versi ini juga mendengarkan
-	perintah untuk menampilkan UI Misi.
+	@file OrderController.lua
+	@version 1.2.2
+	@description Menampilkan notifikasi saat misi selesai.
 ]]
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Events = ReplicatedStorage:WaitForChild("OVHL_Events")
-
 local OrderController = {}
 local UIManager: any
 
-function OrderController:Init(dependencies: {UIManager: any})
-	UIManager = dependencies.UIManager
-	
-	Events:WaitForChild("NewOrderNotification").OnClientEvent:Connect(function(orderData)
-		self:_showOrderNotification(orderData)
-	end)
-	
-	-- Dengarkan perintah untuk update UI Misi dari server
-	Events:WaitForChild("UpdateMissionUI").OnClientEvent:Connect(function(orderData)
-		self:_showMissionTracker(orderData)
-	end)
+function OrderController:Init(d: {UIManager: any})
+	UIManager = d.UIManager
+	Events.NewOrderNotification.OnClientEvent:Connect(function(o) self:_showOrderNotification(o) end)
+	Events.UpdateMissionUI.OnClientEvent:Connect(function(o) self:_showMissionTracker(o) end)
+	Events.MissionCompleted.OnClientEvent:Connect(function(payment) self:_onMissionCompleted(payment) end)
 end
 
-function OrderController:_showOrderNotification(orderData: {from: string, to: string, payment: number})
-	local screen = UIManager:CreateScreen("NotificationUI")
-	if screen:FindFirstChild("OrderNotification") then screen.OrderNotification:Destroy() end
-	
-	local notificationWindow = UIManager:CreateWindow({ Parent = screen, Name = "OrderNotification", Size = UDim2.fromScale(0.3, 0.25), Position = UDim2.fromScale(0.5, 0.4), AnchorPoint = Vector2.new(0.5, 0.5) })
-	
-	UIManager:AddTextLabel({ Parent = notificationWindow, Name = "Title", Text = "ORDER BARU!", Size = UDim2.fromScale(1, 0.2), TextXAlignment = Enum.TextXAlignment.Center })
-	
-	local detailsText = string.format("Dari: %s\nTujuan: %s\nBayaran: Rp. %d", orderData.from, orderData.to, orderData.payment)
-	UIManager:AddTextLabel({ Parent = notificationWindow, Name = "Details", Text = detailsText, Size = UDim2.new(0.9, 0, 0.4, 0), Position = UDim2.fromScale(0.5, 0.45), AnchorPoint = Vector2.new(0.5, 0.5), TextXAlignment = Enum.TextXAlignment.Left })
-	
-	local acceptButton = UIManager:AddButton({ Parent = notificationWindow, Name = "AcceptButton", Text = "TERIMA", Size = UDim2.new(0.4, 0, 0.2, 0), Position = UDim2.fromScale(0.25, 0.85), AnchorPoint = Vector2.new(0.5, 0.5) })
-	
-	local declineButton = UIManager:AddButton({ Parent = notificationWindow, Name = "DeclineButton", Text = "TOLAK", Size = UDim2.new(0.4, 0, 0.2, 0), Position = UDim2.fromScale(0.75, 0.85), AnchorPoint = Vector2.new(0.5, 0.5) })
-	
-	local respondEvent: RemoteEvent = Events:WaitForChild("RespondToOrder")
-	
-	acceptButton.MouseButton1Click:Connect(function()
-		respondEvent:FireServer(true)
-		notificationWindow:Destroy()
-	end)
-	
-	declineButton.MouseButton1Click:Connect(function()
-		respondEvent:FireServer(false)
-		notificationWindow:Destroy()
-	end)
+function OrderController:_showOrderNotification(o: {from: string, to: string, payment: number})
+	local s = UIManager:CreateScreen("NotificationUI")
+	if s:FindFirstChild("OrderNotification") then s.OrderNotification:Destroy() end
+	local nW=UIManager:CreateWindow({Parent=s,Name="OrderNotification",Size=UDim2.fromScale(0.3,0.25),Position=UDim2.fromScale(0.5,0.4),AnchorPoint=Vector2.new(0.5,0.5)})
+	UIManager:AddTextLabel({Parent=nW,Name="Title",Text="ORDER BARU!",Size=UDim2.fromScale(1,0.2),TextXAlignment=Enum.TextXAlignment.Center,TextSize=22})
+	local dT=string.format("Dari: %s\nTujuan: %s\nBayaran: Rp. %d",o.from,o.to,o.payment)
+	UIManager:AddTextLabel({Parent=nW,Name="Details",Text=dT,Size=UDim2.new(0.9,0,0.4,0),Position=UDim2.fromScale(0.5,0.45),AnchorPoint=Vector2.new(0.5,0.5),TextXAlignment=Enum.TextXAlignment.Left})
+	local aB=UIManager:AddButton({Parent=nW,Name="AcceptButton",Text="TERIMA",Size=UDim2.new(0.4,0,0.2,0),Position=UDim2.fromScale(0.25,0.85),AnchorPoint=Vector2.new(0.5,0.5)})
+	local dB=UIManager:AddButton({Parent=nW,Name="DeclineButton",Text="TOLAK",Size=UDim2.new(0.4,0,0.2,0),Position=UDim2.fromScale(0.75,0.85),AnchorPoint=Vector2.new(0.5,0.5)})
+	local rE:RemoteEvent=Events:WaitForChild("RespondToOrder")
+	aB.MouseButton1Click:Connect(function()rE:FireServer(true) nW:Destroy()end)
+	dB.MouseButton1Click:Connect(function()rE:FireServer(false) nW:Destroy()end)
 end
 
--- Fungsi baru untuk Fase 7
-function OrderController:_showMissionTracker(orderData: {to: string})
-	UIManager:CreateMissionTracker(orderData)
+function OrderController:_showMissionTracker(o: {to: string}) UIManager:CreateMissionTracker(o) end
+
+function OrderController:_onMissionCompleted(payment: number)
+	UIManager:DestroyMissionTracker()
+	UIManager:ShowToastNotification("Misi Selesai! +Rp. " .. tostring(payment))
 end
 
 return OrderController

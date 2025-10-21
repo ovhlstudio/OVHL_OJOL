@@ -1,11 +1,9 @@
 --!strict
 --[[
-	@project OVHL_OJOL
 	@file DataService.lua
-	@author OmniverseHighland + AI Co-Dev System
-	@version 2.1.0
+	@version 2.2.0
+	@description Kini mengirim update data ke client saat ada perubahan.
 ]]
-
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local Core = game:GetService("ReplicatedStorage"):WaitForChild("Core")
@@ -39,7 +37,12 @@ function DataService:AddUang(player: Player, amount: number)
 	if data and typeof(data.Uang) == "number" then
 		data.Uang += amount
 		self.SystemMonitor:Log("DataService", "INFO", "DATA_UPDATED", ("Uang pemain '%s' +%d. Total: %d"):format(player.Name, amount, data.Uang))
-		-- TODO: Kirim update UI Uang ke client
+		
+		-- Kirim update ke client
+		local EventService = self.sm:Get("EventService")
+		if EventService then
+			EventService:FireClient(player, "UpdatePlayerData", {Uang = data.Uang})
+		end
 	end
 end
 
@@ -59,21 +62,8 @@ function DataService:_loadPlayerData(player: Player)
 	end
 end
 
-function DataService:_savePlayerData(player: Player)
-	if not self.playerDataCache[player] then return end
-	pcall(function() self.playerDataStore:SetAsync("Player_" .. player.UserId, self.playerDataCache[player]) end)
-end
-
-function DataService:_autoSaveLoop()
-	while true do
-		task.wait(Config.autosave_interval)
-		for _, player in ipairs(Players:GetPlayers()) do self:_savePlayerData(player) end
-	end
-end
-
-function DataService:_onServerShutdown()
-	for _, player in ipairs(Players:GetPlayers()) do self:_savePlayerData(player) end
-	task.wait(2)
-end
+function DataService:_savePlayerData(player: Player) if not self.playerDataCache[player] then return end pcall(function() self.playerDataStore:SetAsync("Player_" .. player.UserId, self.playerDataCache[player]) end) end
+function DataService:_autoSaveLoop() while true do task.wait(Config.autosave_interval) for _, player in ipairs(Players:GetPlayers()) do self:_savePlayerData(player) end end end
+function DataService:_onServerShutdown() for _, player in ipairs(Players:GetPlayers()) do self:_savePlayerData(player) end task.wait(2) end
 
 return DataService
