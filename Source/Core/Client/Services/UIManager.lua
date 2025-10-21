@@ -1,127 +1,112 @@
 --!strict
 --[[
-	@project OVHL_OJOL
-	@file UIManager.lua (Client Service)
-	@author OmniverseHighland + AI Co-Dev System
-	@version 1.2.0
-	
-	@description
-	"Arsitek UI" terpusat. Versi ini menambahkan kemampuan
-	untuk membuat UI Tracker Misi.
+	@file UIManager.lua
+	@version 2.0.1 (FINAL)
+	@description Versi final yang stabil dengan varian styling untuk HUD.
 ]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Events = ReplicatedStorage:WaitForChild("OVHL_Events")
 
 local UIManager = {}
-
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 local activeTheme: any
 local screens = {}
 
 function UIManager:Init()
-	local getThemeFunc: RemoteFunction = Events:WaitForChild("GetActiveTheme")
-	activeTheme = getThemeFunc:InvokeServer()
-	if activeTheme then
-		print("✅ [UIManager] Tema '".. activeTheme.Name .."' berhasil dimuat.")
+	local getThemeFunc: RemoteFunction = Events:WaitForChild("GetActiveTheme", 10)
+	if getThemeFunc then
+		activeTheme = getThemeFunc:InvokeServer()
 	end
 end
 
 function UIManager:CreateScreen(screenName: string)
 	if screens[screenName] then return screens[screenName] end
-	local screenGui = Instance.new("ScreenGui")
-	screenGui.Name = screenName
-	screenGui.ResetOnSpawn = false
-	screenGui.Parent = playerGui
-	screens[screenName] = screenGui
-	return screenGui
+	local sg = Instance.new("ScreenGui")
+	sg.Name = screenName
+	sg.ResetOnSpawn = false
+	sg.Parent = playerGui
+	screens[screenName] = sg
+	return sg
 end
 
-function UIManager:CreateWindow(options: { Parent: GuiObject, Name: string, Size: UDim2, Position: UDim2, AnchorPoint: Vector2? })
-	local frame = Instance.new("Frame")
-	frame.Name = options.Name
-	frame.Size = options.Size
-	frame.Position = options.Position
-	frame.AnchorPoint = options.AnchorPoint or Vector2.new(0, 0)
-	frame.BorderSizePixel = 0
-	frame.BackgroundColor3 = activeTheme.Colors.Background
-	frame.BackgroundTransparency = 0.2
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
-	corner.Parent = frame
-	frame.Parent = options.Parent
-	return frame
+function UIManager:CreateWindow(options: { Parent: GuiObject, Name: string, Style: string?, Size: UDim2, Position: UDim2, AnchorPoint: Vector2? })
+	local f = Instance.new("Frame")
+	f.Name = options.Name
+	f.Size = options.Size
+	f.Position = options.Position
+	f.AnchorPoint = options.AnchorPoint or Vector2.new(0, 0)
+	f.BorderSizePixel = 0
+	if options.Style == "HUD" then
+		f.BackgroundColor3 = activeTheme.Colors.BackgroundHUD
+	else
+		f.BackgroundColor3 = activeTheme.Colors.Background
+	end
+	f.BackgroundTransparency = 0.2
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, 8)
+	c.Parent = f
+	f.Parent = options.Parent
+	return f
 end
 
-function UIManager:AddTextLabel(options: { Parent: GuiObject, Name: string, Text: string, Size: UDim2, Position: UDim2?, AnchorPoint: Vector2?, TextXAlignment: Enum.TextXAlignment?, TextSize: number? })
-	local label = Instance.new("TextLabel")
-	label.Name = options.Name
-	label.Text = options.Text
-	label.Size = options.Size
-	label.Position = options.Position or UDim2.fromScale(0, 0)
-	label.AnchorPoint = options.AnchorPoint or Vector2.new(0, 0)
-	label.TextXAlignment = options.TextXAlignment or Enum.TextXAlignment.Left
-	label.BackgroundTransparency = 1
-	label.Font = activeTheme.Fonts.Body
-	label.TextColor3 = activeTheme.Colors.TextPrimary
-	label.TextSize = options.TextSize or activeTheme.FontSizes.Body
-	label.Parent = options.Parent
-	return label
+function UIManager:AddTextLabel(options: { Parent: GuiObject, Name: string, Style: string?, Text: string, Size: UDim2, Position: UDim2?, AnchorPoint: Vector2?, TextXAlignment: Enum.TextXAlignment?, TextSize: number? })
+	local l = Instance.new("TextLabel")
+	l.Name = options.Name
+	l.Text = options.Text
+	l.Size = options.Size
+	l.Position = options.Position or UDim2.fromScale(0, 0)
+	l.AnchorPoint = options.AnchorPoint or Vector2.new(0, 0)
+	l.TextXAlignment = options.TextXAlignment or Enum.TextXAlignment.Left
+	l.BackgroundTransparency = 1
+	if options.Style == "HUD" then
+		l.Font = activeTheme.Fonts.Header
+		l.TextSize = activeTheme.FontSizes.HUD
+	else
+		l.Font = activeTheme.Fonts.Body
+		l.TextSize = options.TextSize or activeTheme.FontSizes.Body
+	end
+	l.TextColor3 = activeTheme.Colors.TextPrimary
+	l.Parent = options.Parent
+	return l
 end
 
 function UIManager:AddButton(options: { Parent: GuiObject, Name: string, Text: string, Size: UDim2, Position: UDim2, AnchorPoint: Vector2? })
-	local button = Instance.new("TextButton")
-	button.Name = options.Name
-	button.Text = options.Text
-	button.Size = options.Size
-	button.Position = options.Position
-	button.AnchorPoint = options.AnchorPoint or Vector2.new(0, 0)
+	local b = Instance.new("TextButton")
+	b.Name = options.Name
+	b.Text = options.Text
+	b.Size = options.Size
+	b.Position = options.Position
+	b.AnchorPoint = options.AnchorPoint or Vector2.new(0, 0)
 	if options.Name == "AcceptButton" then
-		button.BackgroundColor3 = activeTheme.Colors.Confirm
+		b.BackgroundColor3 = activeTheme.Colors.Confirm
 	elseif options.Name == "DeclineButton" then
-		button.BackgroundColor3 = activeTheme.Colors.Decline
+		b.BackgroundColor3 = activeTheme.Colors.Decline
 	else
-		button.BackgroundColor3 = activeTheme.Colors.Accent
+		b.BackgroundColor3 = activeTheme.Colors.Accent
 	end
-	button.Font = activeTheme.Fonts.Body
-	button.TextColor3 = activeTheme.Colors.TextPrimary
-	button.TextSize = activeTheme.FontSizes.Button
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 6)
-	corner.Parent = button
-	button.Parent = options.Parent
-	return button
+	b.Font = activeTheme.Fonts.Body
+	b.TextColor3 = activeTheme.Colors.TextPrimary
+	b.TextSize = activeTheme.FontSizes.Button
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, 6)
+	c.Parent = b
+	b.Parent = options.Parent
+	return b
 end
 
--- Fungsi baru untuk Fase 7
-function UIManager:CreateMissionTracker(orderData: {to: string})
-	local screen = self:CreateScreen("MissionUI")
-	
-	if screen:FindFirstChild("MissionTracker") then
-		screen.MissionTracker:Destroy()
+function UIManager:CreateMissionTracker(orderData: { to: string })
+	local s = self:CreateScreen("MissionUI")
+	if s:FindFirstChild("MissionTracker") then s.MissionTracker:Destroy() end
+	local tW = self:CreateWindow({ Parent = s, Name = "MissionTracker", Size = UDim2.new(0.25, 0, 0.1, 0), Position = UDim2.new(0.5, 0, 0.9, 0), AnchorPoint = Vector2.new(0.5, 1) })
+	self:AddTextLabel({ Parent = tW, Name = "ObjectiveLabel", Text = "Tujuan: " .. orderData.to, Size = UDim2.fromScale(0.9, 0.8), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5), TextXAlignment = Enum.TextXAlignment.Center, TextSize = 18 })
+end
+
+function UIManager:DestroyMissionTracker()
+	local s = screens["MissionUI"]
+	if s and s:FindFirstChild("MissionTracker") then
+		s.MissionTracker:Destroy()
 	end
-	
-	local trackerWindow = self:CreateWindow({
-		Parent = screen,
-		Name = "MissionTracker",
-		Size = UDim2.new(0.25, 0, 0.1, 0),
-		Position = UDim2.new(0.5, 0, 0.9, 0),
-		AnchorPoint = Vector2.new(0.5, 0),
-	})
-	
-	self:AddTextLabel({
-		Parent = trackerWindow,
-		Name = "ObjectiveLabel",
-		Text = "Tujuan: " .. orderData.to,
-		Size = UDim2.fromScale(0.9, 0.8),
-		Position = UDim2.fromScale(0.5, 0.5),
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		TextXAlignment = Enum.TextXAlignment.Center,
-		TextSize = 18,
-	})
-	
-	print("✅ [UIManager] UI Mission Tracker berhasil dibuat.")
 end
 
 return UIManager

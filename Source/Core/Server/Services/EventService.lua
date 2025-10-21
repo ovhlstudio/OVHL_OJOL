@@ -1,15 +1,10 @@
 --!strict
 --[[
-	@project OVHL_OJOL
 	@file EventService.lua
-	@author OmniverseHighland + AI Co-Dev System
-	@version 2.0.4
-	
-	@description
-	Wrapper komunikasi client-server. Versi ini menambahkan
-	event untuk update UI misi.
+	@version 3.0.0 (REWRITE)
+	@description Ditulis ulang dengan rapi untuk memastikan semua metode
+	             terdefinisi dengan benar sebelum digunakan oleh service lain.
 ]]
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local EventService = {}
@@ -28,17 +23,18 @@ function EventService.new(sm: any)
 end
 
 function EventService:Init()
+	-- Event & Fungsi dibuat di sini untuk memastikan service sudah siap
 	self:CreateFunction("RequestPlayerData", function(player: Player)
 		local DataService = self.sm:Get("DataService")
 		if DataService then return DataService:GetData(player) end
 		return nil
 	end)
+	
 	self:CreateEvent("PlayerDataReady")
 	self:CreateEvent("NewOrderNotification")
 	self:CreateEvent("RespondToOrder")
-	
-	-- Event baru untuk Fase 7
 	self:CreateEvent("UpdateMissionUI")
+	self:CreateEvent("MissionCompleted")
 	
 	self.SystemMonitor:Log("EventService", "INFO", "INIT_SUCCESS", "EventService dimulai.")
 end
