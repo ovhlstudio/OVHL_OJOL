@@ -1,5 +1,6 @@
 # 📜 OVHL OjolRoleplay – Development & Error Logs
 
+# PANDUAN
 <details>
 <summary>
 Gunakan file ini untuk mencatat setiap kejadian penting:
@@ -56,7 +57,68 @@ Client berhasil memanggil server event dengan response valid.
 
 ---
 # LOG BARU MULAI DARI SINI
+
+### [2025-10-21 | 19:50:00] [✅ MILESTONE] [UI]
+<details>
+<summary>
+Fase 4 Selesai - Arsitektur UI Terpusat dengan `UIManager`.
+</summary>
+
+**Deskripsi:**
+Fase 4 berhasil mengimplementasikan arsitektur UI client yang terpusat dan scalable. Semua pembuatan dan styling UI kini dikendalikan oleh satu service utama, `UIManager`, sesuai dengan visi jangka panjang Core OS. Modul-modul UI kini bersifat "declarative", hanya memberi perintah tanpa mengurus detail implementasi.
+
 ---
+
+**Struktur File & Folder Utama (Setelah Fase 4):**
+
+```bash
+Source/
+├── Core/
+│   ├── Client/
+│   │   ├── ClientBootstrapper.lua  # (Baru) Entry point client yang terstruktur
+│   │   ├── Controllers/
+│   │   │   └── PlayerDataController.lua # (Dirombak)
+│   │   ├── Services/
+│   │   │   └── UIManager.lua         # (Baru) Si "Arsitek UI"
+│   │   └── UI/
+│   │       └── MainHUD.lua           # (Dirombak)
+│   ├── Server/
+│   │   ├── Kernel/
+│   │   ├── Modules/
+│   │   └── Services/
+│   └── Shared/
+│       └── Utils/
+│           └── Signal.lua          # (Baru) Utilitas event client-side
+├── Client/
+│   └── Init.client.lua             # (Dirombak)
+└── Server/
+    └── Init.server.lua
+```
+
+---
+
+**Analisis Masalah & Solusi (Case Studies):**
+
+* **Kasus 1: Race Condition Data Client**
+    * **Problem:** `PlayerDataController` di client meminta data ke server *sebelum* `DataService` di server selesai memuat data dari DataStore, menyebabkan client menerima `nil`.
+    * **Solusi:** Diterapkan alur kerja berbasis sinyal. `DataService` kini mengirim `RemoteEvent` ("PlayerDataReady") ke client setelah data berhasil dimuat ke cache. `PlayerDataController` diubah untuk menunggu sinyal ini terlebih dahulu sebelum mengirim `RemoteFunction` untuk meminta data.
+
+* **Kasus 2: Error Fitur Beta (`UIStyle`)**
+    * **Problem:** Penggunaan `Instance.new("UIStyle")` menyebabkan error `Unable to create an Instance` karena fitur ini masih bersifat Beta dan harus diaktifkan manual di Studio.
+    * **Solusi:** Untuk menjaga stabilitas dan menghindari ketergantungan pada fitur Beta, `UIManager` dirombak. Alih-alih menggunakan `StyleSheet`, `UIManager` kini menerapkan properti style (seperti `BackgroundColor3`, `Font`, `TextColor3`) secara langsung ke setiap elemen UI yang dibuatnya. Prinsip sentralisasi tetap terjaga, hanya metode eksekusinya yang diubah ke cara yang lebih stabil.
+
+* **Kasus 3: Path `require()` Salah**
+    * **Problem:** `PlayerDataController` gagal memuat modul `Signal` karena path `require`-nya salah, menyebabkan seluruh alur client berhenti.
+    * **Solusi:** Path diperbaiki dari `script.Parent.Parent.Shared...` menjadi `Core.Shared.Utils.Signal` yang lebih absolut dan anti-gagal terhadap perubahan struktur folder.
+
+---
+
+**Status Akhir & Kesiapan:**
+Dengan selesainya Fase 4, Core OS kini memiliki arsitektur UI yang solid, modular, dan siap untuk dikembangkan dengan fitur-fitur gameplay yang lebih kompleks. Semua masalah teknis yang ditemukan telah diatasi. **Proyek siap untuk melanjutkan ke Fase 5.**
+</details>
+
+---
+
 ### [2025-10-21 | 19:15:00] [🧱 INFRASTRUCTURE] [FIX]
 
 <details>
