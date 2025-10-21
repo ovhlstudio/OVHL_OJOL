@@ -58,6 +58,61 @@ Client berhasil memanggil server event dengan response valid.
 ---
 # LOG BARU MULAI DARI SINI
 
+### [2025-10-21 | 21:55:00] [✅ MILESTONE] [GAMEPLAY]
+
+**Judul:** Gameplay Loop Selesai Total - Misi Nyata & Sinkronisasi Real-time.
+
+**Kolaborator:** Hanif Saifudin (Lead Dev) & Gemini (AI Co-Dev)
+
+<details>
+<summary><strong>Klik untuk membuka rangkuman detail Fase 8 & 9...</strong></summary>
+
+---
+
+#### **BAGIAN 1: FASE 8 - MISI JADI NYATA (TRIGGER ZONE)**
+
+##### **Branch Fitur:**
+`feature/trigger-zone-mission`
+
+##### **Tujuan Utama:**
+Mengubah misi dari sekadar UI menjadi sebuah tugas yang memiliki *win condition* (kondisi kemenangan). Pemain kini harus secara fisik pergi ke lokasi tujuan untuk menyelesaikan order.
+
+##### **Alur Kerja Fitur yang Dicapai:**
+1.  **Pembuatan Zona:** Setelah pemain menerima order, `TestOrder` (server) memerintahkan `ZoneService` (server) untuk membuat sebuah `Part` silinder hijau semi-transparan ("zona tujuan") di `Workspace`, di lokasi yang telah ditentukan.
+2.  **Deteksi Pemain:** `ZoneService` memasang *listener* `.Touched` pada zona tersebut. Ketika ada sesuatu yang menyentuh, ia akan memverifikasi apakah itu adalah karakter dari pemain yang sedang menjalankan misi.
+3.  **Penyelesaian Misi:** Jika verifikasi berhasil, `ZoneService` akan memicu *callback* yang memberitahu `TestOrder` bahwa misi telah selesai.
+4.  **Pemberian Imbalan:** `TestOrder` kemudian memerintahkan `DataService` untuk menambahkan uang ke data pemain (`AddUang`).
+5.  **Feedback ke Client:** `TestOrder` juga mengirim `RemoteEvent` ("MissionCompleted") ke client untuk memberitahu bahwa misi sudah beres, yang kemudian memicu penghapusan UI Misi Aktif.
+
+##### **Tantangan Kritis & Solusinya:**
+* **`MASALAH: Bug Kritis di Core OS`**
+    * **Kasus:** Terjadi serangkaian error beruntun (`attempt to call missing method`, `Infinite yield possible`) yang disebabkan oleh kesalahan penulisan kode (minifikasi & salah panggil metode) di `StyleService` dan `EventService` saat Fase 8 diimplementasikan.
+    * **Solusi:** Melakukan "operasi bedah jantung". Semua file inti yang rusak (`StyleService`, `EventService`, `UIManager`) ditulis ulang dari awal dengan kode yang rapi, jelas, dan anti-gagal, menyelesaikan semua error secara tuntas.
+
+---
+
+#### **BAGIAN 2: FASE 9 - SINKRONISASI DATA REAL-TIME**
+
+##### **Branch Fitur:**
+`feature/realtime-data-sync`
+
+##### **Tujuan Utama:**
+Membuat game terasa "hidup" dengan memastikan setiap perubahan data di server (khususnya uang) langsung terlihat di HUD pemain tanpa perlu menunggu atau *rejoin*.
+
+##### **Alur Kerja Fitur yang Dicapai:**
+1.  **"Jembatan" Update:** Dibuat `RemoteEvent` baru ("UpdatePlayerData") sebagai saluran berita khusus dari server ke client.
+2.  **Server Proaktif:** Fungsi `DataService:AddUang` di-upgrade. Setelah berhasil menambah uang pemain di server, ia langsung mengirim event `UpdatePlayerData` ke client yang bersangkutan, berisi data baru (misal: `{Uang = 170000}`).
+3.  **Client Responsif:** `PlayerDataController` di client dipasangi "antena" untuk mendengarkan event `UpdatePlayerData`. Ketika menerima update, ia memperbarui *cache* data lokalnya dan menyebarkan sinyal lokal (`OnDataUpdated`).
+4.  **UI "Hidup":** Modul `MainHUD` mendengarkan sinyal `OnDataUpdated`. Begitu sinyal diterima, ia langsung memperbarui teks di `MoneyLabel` dengan angka uang terbaru.
+5.  **Bonus Feedback:** Sebagai pelengkap, `UIManager` diberi kemampuan baru untuk menampilkan notifikasi sementara ("Toast Notification") yang muncul dari atas layar, yang digunakan untuk menampilkan pesan "Misi Selesai! +Rp 15000".
+
+---
+
+#### **STATUS PROYEK SAAT INI:**
+Semua progres dari Fase 1 hingga 9 telah berhasil diimplementasikan, diuji, dan digabungkan ke dalam branch **`develop`**. Proyek kini memiliki satu gameplay loop yang berfungsi penuh dari A-Z dengan feedback visual yang responsif.
+
+</details>
+
 ### [2025-10-21 | 20:30:00] [SUMMARY LOG] Pencapaian Awal & Pembangunan Gameplay Loop v1
 **Kolaborator:** Hanif Saifudin (Lead Dev) & Gemini (AI Co-Dev)
 **Tujuan Log:** Menyediakan rangkuman konteks penuh untuk onboarding cepat bagi pengembang atau AI di sesi pengembangan berikutnya.
