@@ -1,5 +1,107 @@
 # 📜 OVHL OjolRoleplay – SUMARY LOGS
 
+### [2025-10-21 | 22:15:00] [SUMMARY LOG] Milestone 1: Fondasi Core OS & Gameplay Loop v1 Selesai
+**Kolaborator:** Hanif Saifudin (Lead Dev) & Gemini (AI Co-Dev)
+**Tujuan Log:** Menyediakan rangkuman konteks penuh untuk onboarding cepat bagi pengembang atau AI di sesi pengembangan berikutnya.
+
+<details>
+<summary><strong>Klik untuk membuka rangkuman detail...</strong></summary>
+
+---
+
+#### **BAGIAN 1: PEMBANGUNAN FONDASI CORE OS (FASE 1 - 4)**
+
+##### **Branch Fitur:**
+`dev/coreos`, `feature/fase-3-ui-sync`
+
+##### **Tujuan Utama:**
+Membangun arsitektur dasar game yang modular, scalable, dan anti-gagal menggunakan sistem Core OS yang terintegrasi penuh dengan Rojo.
+
+##### **Komponen Kunci yang Dibangun:**
+* **`Core OS Services (Server)`**: `Bootstrapper`, `ServiceManager`, `SystemMonitor`, `EventService`, `DataService`, `StyleService`.
+* **`Arsitektur UI (Client)`**: `ClientBootstrapper`, `UIManager` (sebagai "Arsitek UI" terpusat), `PlayerDataController`, dan modul UI modular seperti `MainHUD`.
+* **`Git Workflow`**: Mengadopsi alur kerja **Git Flow** (`main` > `develop` > `feature/...`) untuk menjaga stabilitas dan kerapian kode.
+
+##### **Tantangan Kritis & Solusinya (Case Studies):**
+1.  **`MASALAH: Rojo Double Boot`**
+    * **Solusi:** Mengubah strategi pemetaan di `default.project.json` menjadi **pemetaan file eksplisit** untuk mencegah Rojo membuat skrip pembungkus.
+
+2.  **`MASALAH: Race Condition Data Client`**
+    * **Solusi:** Menerapkan **alur kerja berbasis sinyal** (`PlayerDataReady`) agar client hanya meminta data setelah server memberi "lampu hijau".
+
+3.  **`MASALAH: Arsitektur UI Tidak Stabil`**
+    * **Solusi:** Menciptakan **`UIManager`** sebagai "arsitek" terpusat yang bertanggung jawab penuh atas pembuatan dan styling semua elemen UI, sesuai prinsip **"Minta, Jangan Bikin Sendiri"**.
+
+---
+
+#### **BAGIAN 2: IMPLEMENTASI GAMEPLAY LOOP v1 (FASE 5 - 9)**
+
+##### **Branch Fitur:**
+`feature/gameplay-loop-v1`, `feature/trigger-zone-mission`, `feature/realtime-data-sync`
+
+##### **Tujuan Utama:**
+Mengimplementasikan alur interaksi pemain pertama yang lengkap, fungsional, dan responsif, dari menerima notifikasi hingga misi selesai dengan feedback visual real-time.
+
+##### **Alur Kerja Fitur yang Dicapai:**
+1.  **Notifikasi & Respon (Fase 5-6):** Server mengirim notifikasi order; client menampilkan UI interaktif (`TERIMA`/`TOLAK`) dan mengirim respon kembali ke server.
+2.  **Misi Jadi Nyata (Fase 7-8):** Setelah order diterima, `ZoneService` membuat "zona tujuan" fisik di `Workspace`. Misi dianggap selesai ketika pemain menyentuh zona ini, yang kemudian memicu pemberian imbalan di server.
+3.  **Sinkronisasi Real-time (Fase 9):** Setiap perubahan data di server (khususnya penambahan uang) kini langsung dipancarkan ke client melalui `RemoteEvent` (`UpdatePlayerData`), membuat HUD uang di layar pemain ter-update secara instan. Notifikasi "Misi Selesai!" juga ditambahkan untuk feedback.
+
+##### **Tantangan Kritis & Solusinya (Case Studies):**
+* **`MASALAH: Bug Kritis Core OS (Fase 8)`**
+    * **Kasus:** Terjadi serangkaian error beruntun (`attempt to call missing method`, `Infinite yield possible`) yang disebabkan oleh kesalahan penulisan kode (minifikasi & salah panggil metode) di `StyleService` dan `EventService`.
+    * **Solusi:** Melakukan "operasi bedah jantung". Semua file inti yang rusak ditulis ulang dari awal dengan kode yang rapi, jelas, dan anti-gagal, menyelesaikan semua error secara tuntas.
+
+---
+
+#### **BAGIAN 3: STRUKTUR FINAL PROYEK (Setelah Fase 9)**
+
+##### **Struktur Folder `Source/`:**
+```bash
+Source/
+├── Client
+│   └── Init.client.lua
+├── Core
+│   ├── Client
+│   │   ├── ClientBootstrapper.lua
+│   │   ├── Controllers
+│   │   │   ├── OrderController.lua
+│   │   │   └── PlayerDataController.lua
+│   │   ├── Services
+│   │   │   └── UIManager.lua
+│   │   └── UI
+│   │       └── MainHUD.lua
+│   ├── Server
+│   │   ├── Kernel
+│   │   │   └── Bootstrapper.lua
+│   │   ├── Modules
+│   │   │   └── TestOrder
+│   │   │       ├── Handler.lua
+│   │   │       └── manifest.lua
+│   │   └── Services
+│   │       ├── DataService.lua
+│   │       ├── EventService.lua
+│   │       ├── ServiceManager.lua
+│   │       ├── StyleService.lua
+│   │       ├── SystemMonitor.lua
+│   │       └── ZoneService.lua
+│   └── Shared
+│       ├── Config.lua
+│       └── Utils
+│           └── Signal.lua
+├── Replicated
+│   └── .gitkeep
+└── Server
+    └── Init.server.lua
+```
+
+---
+
+#### **STATUS PROYEK SAAT INI:**
+Semua progres dari Fase 1 hingga 9 telah berhasil diimplementasikan, diuji, dan digabungkan ke dalam branch **`develop`**. Proyek kini memiliki fondasi Core OS yang stabil dan satu gameplay loop yang berfungsi penuh dari A-Z dengan feedback visual yang responsif. **Proyek siap untuk pengembangan fitur berikutnya.**
+
+</details>
+
 ### [2025-10-21 | 20:30:00] [SUMMARY LOG] Pencapaian Awal & Pembangunan Gameplay Loop v1
 **Kolaborator:** Hanif Saifudin (Lead Dev) & Gemini (AI Co-Dev)
 **Tujuan Log:** Menyediakan rangkuman konteks penuh untuk onboarding cepat bagi pengembang atau AI di sesi pengembangan berikutnya.
