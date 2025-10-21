@@ -1,0 +1,23 @@
+{
+  "name": "OVHL_OJOL",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Core": {
+        "$path": "Core"
+      },
+      "Server": {
+        "$path": "Server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "$path": "Client"
+      }
+    },
+    "ReplicatedStorage": {
+      "$path": "Shared"
+    }
+  }
+}
