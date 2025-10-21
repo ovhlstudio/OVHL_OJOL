@@ -1,14 +1,9 @@
 --!strict
 --[[
-	@project OVHL_OJOL
 	@file StyleService.lua
-	@author OmniverseHighland + AI Co-Dev System
-	
-	@description
-	Mengelola semua token styling, tema, dan stylesheet untuk UI.
-	Memastikan tampilan yang konsisten di seluruh antarmuka client.
+	@version 3.0.1 (FINAL)
+	@description Versi final yang stabil dengan token style untuk HUD.
 ]]
-
 local StyleService = {}
 StyleService.__index = StyleService
 
@@ -17,18 +12,49 @@ function StyleService.new(sm: any)
 	self.sm = sm
 	self.SystemMonitor = sm:Get("SystemMonitor")
 	self.themes = {}
-	self.activeTheme = "default"
+	self.activeThemeName = "Default"
+	self:_LoadThemes()
 	return self
 end
 
 function StyleService:Init()
-	self.SystemMonitor:Log("StyleService", "INFO", "INIT", "StyleService dimulai.")
-	-- TODO: Muat tema default
+	task.defer(function()
+		local EventService = self.sm:Get("EventService")
+		if EventService then
+			EventService:CreateFunction("GetActiveTheme", function(player: Player)
+				return self:GetTheme(self.activeThemeName)
+			end)
+		end
+	end)
+	self.SystemMonitor:Log("StyleService", "INFO", "INIT_SUCCESS", "StyleService dimulai.")
 end
 
--- TODO: Implementasi fungsi-fungsi style
--- :GetToken(tokenPath)
--- :SetTheme(themeName)
--- :GetCurrentTheme()
+function StyleService:GetTheme(name: string)
+	return self.themes[name]
+end
+
+function StyleService:_LoadThemes()
+	self.themes["Default"] = {
+		Name = "Default",
+		Colors = {
+			Background = Color3.fromRGB(25, 25, 25),
+			BackgroundHUD = Color3.fromRGB(10, 10, 10),
+			TextPrimary = Color3.fromRGB(250, 250, 250),
+			Accent = Color3.fromRGB(50, 150, 255),
+			Confirm = Color3.fromRGB(76, 175, 80),
+			Decline = Color3.fromRGB(244, 67, 54),
+		},
+		Fonts = {
+			Header = Enum.Font.GothamBold,
+			Body = Enum.Font.Gotham,
+		},
+		FontSizes = {
+			Body = 16,
+			Button = 18,
+			HUD = 24,
+		}
+	}
+	self.SystemMonitor:Log("StyleService", "INFO", "THEME_LOADED", ("Tema '%s' berhasil dimuat."):format(self.activeThemeName))
+end
 
 return StyleService

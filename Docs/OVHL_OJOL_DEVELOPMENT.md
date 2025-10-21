@@ -37,6 +37,26 @@ If you are an AI successor:
 
 ---
 
+## 🌳 Workflow & Aturan Git (Git Flow)
+Untuk menjaga stabilitas dan kerapian proyek, kita mengadopsi alur kerja Git Flow yang disederhanakan. Semua pengembang (termasuk AI) wajib mengikuti aturan ini:
+
+1.  **Branch `main`:**
+    * **Tujuan:** Hanya berisi kode versi rilis yang sudah stabil dan teruji penuh.
+    * **Aturan:** DILARANG melakukan *commit* atau *push* langsung ke `main`. Branch ini hanya menerima *merge* dari `develop` saat akan merilis versi baru.
+
+2.  **Branch `develop`:**
+    * **Tujuan:** Bertindak sebagai "dapur utama" atau cabang integrasi. Berisi gabungan semua fitur yang sudah selesai dikerjakan dan siap untuk diuji bersama.
+    * **Aturan:** Menerima *merge* dari branch `feature/...` yang sudah selesai. Semua branch fitur baru harus dibuat dari `develop`.
+
+3.  **Branch `feature/...` (Contoh: `feature/gameplay-loop-v1`):**
+    * **Tujuan:** Untuk mengerjakan fitur baru yang spesifik. Setiap fitur besar harus punya branch-nya sendiri.
+    * **Aturan:** Selalu dibuat dari `develop`. Setelah fitur selesai dan dites, harus di-*merge* kembali ke `develop`.
+
+**Alur Kerja Standar:**
+`git checkout develop` → `git checkout -b feature/nama-fitur-baru` → (Kerjakan Fitur) → `git checkout develop` → `git merge feature/nama-fitur-baru`
+
+---
+
 ## 🎮 Game Overview: Ojol Roleplay
 
 ### Concept
@@ -121,6 +141,49 @@ Core/
 | **UI Style Tokens** | Semua visual diatur lewat StyleService agar seragam di seluruh sistem. |
 | **Monitoring & Recovery** | Semua error tercatat otomatis; modul tidak boleh crash tanpa laporan. |
 | **Offline-Safe Architecture** | DataService punya retry & cache untuk mitigasi data loss. |
+
+---
+
+---
+
+## 🛠️ Aturan Main & Alur Kerja Pengembangan (Wajib Dibaca!)
+Bagian ini berisi aturan-aturan penting yang harus diikuti untuk menjaga proyek tetap rapi, stabil, dan mudah dikelola.
+
+### 1. Alur Kerja Git (`Git Flow`)
+Kita menggunakan alur kerja Git Flow yang ketat untuk semua pengembangan.
+
+* **`main`**: Cabang suci. Hanya untuk versi rilis stabil. **DILARANG PUSH LANGSUNG.**
+* **`develop`**: Cabang integrasi. Dapur utama untuk semua fitur yang sudah selesai dan dites. Menerima *merge* dari `feature/...`.
+* **`feature/...`**: Cabang untuk mengerjakan fitur baru. **SELALU DIBUAT DARI `develop`**. Setelah selesai, di-*merge* kembali ke `develop`.
+
+**Urutan Perintah Wajib Saat Memulai Fitur Baru:**
+```bash
+# 1. Pindah dan update 'dapur utama'
+git checkout develop
+git pull origin develop
+
+# 2. Buat 'ruang kerja' baru dari sana
+git checkout -b feature/nama-fitur-keren
+
+# 3. Lapor ke server (opsional tapi disarankan)
+git push -u origin feature/nama-fitur-keren
+```
+
+### 2. Aturan Skrip Deployment (`.sh`)
+Semua penambahan atau perubahan besar pada struktur proyek dilakukan melalui skrip `.sh` di folder `Tools/`.
+
+* **Izin Eksekusi (`chmod`):** Perintah `chmod +x Tools/nama-skrip-baru.sh` **HANYA PERLU DIJALANKAN SEKALI** saat file `.sh` baru pertama kali dibuat. Setelah itu, izin akan menempel selamanya.
+* **Eksekusi:** Untuk menjalankan skrip, selalu gunakan `./Tools/nama-skrip.sh`.
+
+### 3. Prosedur Debugging "Aneh"
+Jika output di Roblox Studio tidak sesuai dengan yang diharapkan (misal: fitur baru tidak muncul padahal kode sudah dieksekusi), **JANGAN LANGSUNG MENGUBAH KODE.** Lakukan prosedur ini terlebih dahulu:
+
+1.  **Cek Status Git Lokal:** Jalankan `git status` dan `git log -1` di terminal. Pastikan lu ada di branch yang benar dan commit terakhir adalah yang lu harapkan.
+2.  **Bandingkan dengan Server:** Buka halaman branch lu di GitHub. Bandingkan `Last commit message`-nya. Apakah sama dengan yang ada di komputer lu?
+3.  **Jika Berbeda -> `push` Ulang:** Jika server ketinggalan, artinya proses `push` terakhir gagal. Lakukan `git push origin nama-branch-lu` sekali lagi dan pastikan tidak ada error.
+4.  **Jika Sama -> Baru Debug Kode:** Jika Git sudah sinkron tapi masih ada masalah, baru kita boleh curiga ada bug di dalam kode Lua-nya.
+
+---
 
 ---
 

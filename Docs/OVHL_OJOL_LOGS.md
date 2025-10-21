@@ -1,5 +1,6 @@
 # 📜 OVHL OjolRoleplay – Development & Error Logs
 
+# PANDUAN
 <details>
 <summary>
 Gunakan file ini untuk mencatat setiap kejadian penting:
@@ -56,7 +57,247 @@ Client berhasil memanggil server event dengan response valid.
 
 ---
 # LOG BARU MULAI DARI SINI
+
+### [2025-10-21 | 21:55:00] [✅ MILESTONE] [GAMEPLAY]
+
+**Judul:** Gameplay Loop Selesai Total - Misi Nyata & Sinkronisasi Real-time.
+
+**Kolaborator:** Hanif Saifudin (Lead Dev) & Gemini (AI Co-Dev)
+
+<details>
+<summary><strong>Klik untuk membuka rangkuman detail Fase 8 & 9...</strong></summary>
+
 ---
+
+#### **BAGIAN 1: FASE 8 - MISI JADI NYATA (TRIGGER ZONE)**
+
+##### **Branch Fitur:**
+`feature/trigger-zone-mission`
+
+##### **Tujuan Utama:**
+Mengubah misi dari sekadar UI menjadi sebuah tugas yang memiliki *win condition* (kondisi kemenangan). Pemain kini harus secara fisik pergi ke lokasi tujuan untuk menyelesaikan order.
+
+##### **Alur Kerja Fitur yang Dicapai:**
+1.  **Pembuatan Zona:** Setelah pemain menerima order, `TestOrder` (server) memerintahkan `ZoneService` (server) untuk membuat sebuah `Part` silinder hijau semi-transparan ("zona tujuan") di `Workspace`, di lokasi yang telah ditentukan.
+2.  **Deteksi Pemain:** `ZoneService` memasang *listener* `.Touched` pada zona tersebut. Ketika ada sesuatu yang menyentuh, ia akan memverifikasi apakah itu adalah karakter dari pemain yang sedang menjalankan misi.
+3.  **Penyelesaian Misi:** Jika verifikasi berhasil, `ZoneService` akan memicu *callback* yang memberitahu `TestOrder` bahwa misi telah selesai.
+4.  **Pemberian Imbalan:** `TestOrder` kemudian memerintahkan `DataService` untuk menambahkan uang ke data pemain (`AddUang`).
+5.  **Feedback ke Client:** `TestOrder` juga mengirim `RemoteEvent` ("MissionCompleted") ke client untuk memberitahu bahwa misi sudah beres, yang kemudian memicu penghapusan UI Misi Aktif.
+
+##### **Tantangan Kritis & Solusinya:**
+* **`MASALAH: Bug Kritis di Core OS`**
+    * **Kasus:** Terjadi serangkaian error beruntun (`attempt to call missing method`, `Infinite yield possible`) yang disebabkan oleh kesalahan penulisan kode (minifikasi & salah panggil metode) di `StyleService` dan `EventService` saat Fase 8 diimplementasikan.
+    * **Solusi:** Melakukan "operasi bedah jantung". Semua file inti yang rusak (`StyleService`, `EventService`, `UIManager`) ditulis ulang dari awal dengan kode yang rapi, jelas, dan anti-gagal, menyelesaikan semua error secara tuntas.
+
+---
+
+#### **BAGIAN 2: FASE 9 - SINKRONISASI DATA REAL-TIME**
+
+##### **Branch Fitur:**
+`feature/realtime-data-sync`
+
+##### **Tujuan Utama:**
+Membuat game terasa "hidup" dengan memastikan setiap perubahan data di server (khususnya uang) langsung terlihat di HUD pemain tanpa perlu menunggu atau *rejoin*.
+
+##### **Alur Kerja Fitur yang Dicapai:**
+1.  **"Jembatan" Update:** Dibuat `RemoteEvent` baru ("UpdatePlayerData") sebagai saluran berita khusus dari server ke client.
+2.  **Server Proaktif:** Fungsi `DataService:AddUang` di-upgrade. Setelah berhasil menambah uang pemain di server, ia langsung mengirim event `UpdatePlayerData` ke client yang bersangkutan, berisi data baru (misal: `{Uang = 170000}`).
+3.  **Client Responsif:** `PlayerDataController` di client dipasangi "antena" untuk mendengarkan event `UpdatePlayerData`. Ketika menerima update, ia memperbarui *cache* data lokalnya dan menyebarkan sinyal lokal (`OnDataUpdated`).
+4.  **UI "Hidup":** Modul `MainHUD` mendengarkan sinyal `OnDataUpdated`. Begitu sinyal diterima, ia langsung memperbarui teks di `MoneyLabel` dengan angka uang terbaru.
+5.  **Bonus Feedback:** Sebagai pelengkap, `UIManager` diberi kemampuan baru untuk menampilkan notifikasi sementara ("Toast Notification") yang muncul dari atas layar, yang digunakan untuk menampilkan pesan "Misi Selesai! +Rp 15000".
+
+---
+
+#### **STATUS PROYEK SAAT INI:**
+Semua progres dari Fase 1 hingga 9 telah berhasil diimplementasikan, diuji, dan digabungkan ke dalam branch **`develop`**. Proyek kini memiliki satu gameplay loop yang berfungsi penuh dari A-Z dengan feedback visual yang responsif.
+
+</details>
+
+### [2025-10-21 | 20:30:00] [SUMMARY LOG] Pencapaian Awal & Pembangunan Gameplay Loop v1
+**Kolaborator:** Hanif Saifudin (Lead Dev) & Gemini (AI Co-Dev)
+**Tujuan Log:** Menyediakan rangkuman konteks penuh untuk onboarding cepat bagi pengembang atau AI di sesi pengembangan berikutnya.
+
+<details>
+<summary><strong>Klik untuk membuka rangkuman detail...</strong></summary>
+
+---
+
+#### **BAGIAN 1: PEMBANGUNAN FONDASI CORE OS (FASE 1 - 4)**
+
+##### **Branch Fitur:**
+`dev/coreos`, `feature/fase-3-ui-sync`
+
+##### **Tujuan Utama:**
+Membangun arsitektur dasar game yang modular, scalable, dan anti-gagal menggunakan sistem Core OS yang terintegrasi penuh dengan Rojo.
+
+##### **Komponen Kunci yang Dibangun:**
+* **`Core OS Services (Server)`**: `Bootstrapper`, `ServiceManager`, `SystemMonitor`, `EventService`, `DataService`, `StyleService`.
+* **`Arsitektur UI (Client)`**: `ClientBootstrapper`, `UIManager` (sebagai "Arsitek UI" terpusat), `PlayerDataController`, dan modul UI modular seperti `MainHUD`.
+* **`Git Workflow`**: Mengadopsi alur kerja **Git Flow** (`main` > `develop` > `feature/...`) untuk menjaga stabilitas dan kerapian kode.
+
+##### **Tantangan Kritis & Solusinya (Case Studies):**
+
+1.  **`MASALAH: Rojo Double Boot`**
+    * **Kasus:** Konfigurasi `default.project.json` awal yang memetakan seluruh folder menyebabkan Rojo membuat skrip pembungkus, sehingga `Init.server.lua` dieksekusi dua kali.
+    * **Solusi:** Mengubah strategi pemetaan menjadi **pemetaan file eksplisit**. Ini memberitahu Rojo untuk menempatkan file persis di tujuannya tanpa membuat instance perantara.
+
+2.  **`MASALAH: Race Condition Data Client`**
+    * **Kasus:** Client meminta data pemain segera setelah join, namun server masih dalam proses mengambil data dari DataStore, sehingga client menerima `nil`.
+    * **Solusi:** Menerapkan **alur kerja berbasis sinyal**. `DataService` kini mengirim `RemoteEvent` ("PlayerDataReady") ke client *setelah* data berhasil dimuat. Client menunggu sinyal ini sebelum meminta data.
+
+3.  **`MASALAH: Arsitektur UI Tidak Stabil`**
+    * **Kasus:** Upaya awal menggunakan fitur Beta `StyleSheet` gagal karena harus diaktifkan manual dan tidak stabil.
+    * **Solusi:** Menciptakan **`UIManager`** sebagai "arsitek" terpusat yang bertanggung jawab penuh atas pembuatan dan styling semua elemen UI, sesuai prinsip **"Minta, Jangan Bikin Sendiri"**.
+
+---
+
+#### **BAGIAN 2: IMPLEMENTASI GAMEPLAY LOOP v1 (FASE 5 - 7)**
+
+##### **Branch Fitur:**
+`feature/gameplay-loop-v1`
+
+##### **Tujuan Utama:**
+Mengimplementasikan alur interaksi pemain pertama yang lengkap dan fungsional, dari menerima notifikasi hingga menjalankan misi.
+
+##### **Alur Kerja Fitur yang Dicapai:**
+1.  **Fase 5 (Notifikasi):** Server mengirimkan notifikasi order baru ke client.
+2.  **Fase 6 (Respon):** Client menampilkan UI interaktif (`TERIMA`/`TOLAK`) dan mengirimkan respon pemain kembali ke server.
+3.  **Fase 7 (Aksi):** Server menerima respon "TERIMA" dan mengirim perintah balik ke client untuk menampilkan UI Misi Aktif.
+
+---
+
+#### **BAGIAN 3: STRUKTUR FINAL PROYEK (Setelah Gameplay Loop v1)**
+
+##### **Struktur Folder `Source/`:**
+```bash
+Source/
+├── Client
+│   └── Init.client.lua
+├── Core
+│   ├── Client
+│   │   ├── ClientBootstrapper.lua
+│   │   ├── Controllers
+│   │   │   ├── OrderController.lua
+│   │   │   └── PlayerDataController.lua
+│   │   ├── Services
+│   │   │   └── UIManager.lua
+│   │   └── UI
+│   │       └── MainHUD.lua
+│   ├── Server
+│   │   ├── Kernel
+│   │   │   └── Bootstrapper.lua
+│   │   ├── Modules
+│   │   │   └── TestOrder
+│   │   │       ├── Handler.lua
+│   │   │       └── manifest.lua
+│   │   └── Services
+│   │       ├── DataService.lua
+│   │       ├── EventService.lua
+│   │       ├── ServiceManager.lua
+│   │       ├── StyleService.lua
+│   │       └── SystemMonitor.lua
+│   └── Shared
+│       ├── Config.lua
+│       └── Utils
+│           └── Signal.lua
+├── Replicated
+│   └── .gitkeep
+└── Server
+    └── Init.server.lua
+```
+
+---
+
+#### **STATUS PROYEK SAAT INI:**
+Semua progres dari Fase 1 hingga 7 telah berhasil diimplementasikan, diuji, dan digabungkan ke dalam branch **`develop`**. Proyek kini memiliki fondasi Core OS yang stabil dan satu gameplay loop yang berfungsi penuh. Proyek siap untuk pengembangan fitur berikutnya.
+
+</details>
+
+### [2025-10-21 | 20:25:00] [✅ MILESTONE] [GAMEPLAY]
+
+<details>
+<summary>
+Gameplay Loop v1 Selesai - Alur Notifikasi, Respon, dan Misi Aktif.
+</summary>
+
+**Deskripsi:**
+Pencapaian besar! Gameplay loop pertama dari game Ojol Roleplay berhasil diimplementasikan secara penuh dari awal hingga akhir. Fitur ini mencakup seluruh alur interaksi pemain, mulai dari menerima notifikasi order hingga menjalankan misi, yang dikoordinasikan sepenuhnya oleh Core OS.
+
+**Alur Kerja Fitur yang Dicapai:**
+1.  **Fase 5 (Notifikasi):** Server, melalui modul `TestOrder`, berhasil mensimulasikan dan mengirimkan notifikasi order baru ke client secara real-time menggunakan `EventService`.
+2.  **Fase 6 (Respon):** Client, melalui `OrderController`, berhasil menampilkan UI interaktif (`TERIMA`/`TOLAK`) yang dibuat oleh `UIManager` dan mengirimkan respon pemain kembali ke server.
+3.  **Fase 7 (Aksi):** Server berhasil menerima respon pemain. Jika order diterima, server langsung mengirim perintah balik ke client untuk menampilkan UI Misi Aktif, menggantikan notifikasi order sebelumnya.
+
+**Komponen Utama yang Terlibat:**
+* **Server:** `TestOrder/Handler.lua`, `EventService.lua`
+* **Client:** `OrderController.lua`, `UIManager.lua`
+* **Komunikasi:** `RemoteEvent` ("NewOrderNotification", "RespondToOrder", "UpdateMissionUI")
+
+**Status Akhir & Kesiapan:**
+Fitur gameplay loop v1 kini telah stabil dan berfungsi penuh tanpa error. Branch `feature/gameplay-loop-v1` siap untuk digabungkan (`merge`) ke dalam branch `develop`.
+</details>
+
+### [2025-10-21 | 19:50:00] [✅ MILESTONE] [UI]
+<details>
+<summary>
+Fase 4 Selesai - Arsitektur UI Terpusat dengan `UIManager`.
+</summary>
+
+**Deskripsi:**
+Fase 4 berhasil mengimplementasikan arsitektur UI client yang terpusat dan scalable. Semua pembuatan dan styling UI kini dikendalikan oleh satu service utama, `UIManager`, sesuai dengan visi jangka panjang Core OS. Modul-modul UI kini bersifat "declarative", hanya memberi perintah tanpa mengurus detail implementasi.
+
+---
+
+**Struktur File & Folder Utama (Setelah Fase 4):**
+
+```bash
+Source/
+├── Core/
+│   ├── Client/
+│   │   ├── ClientBootstrapper.lua  # (Baru) Entry point client yang terstruktur
+│   │   ├── Controllers/
+│   │   │   └── PlayerDataController.lua # (Dirombak)
+│   │   ├── Services/
+│   │   │   └── UIManager.lua         # (Baru) Si "Arsitek UI"
+│   │   └── UI/
+│   │       └── MainHUD.lua           # (Dirombak)
+│   ├── Server/
+│   │   ├── Kernel/
+│   │   ├── Modules/
+│   │   └── Services/
+│   └── Shared/
+│       └── Utils/
+│           └── Signal.lua          # (Baru) Utilitas event client-side
+├── Client/
+│   └── Init.client.lua             # (Dirombak)
+└── Server/
+    └── Init.server.lua
+```
+
+---
+
+**Analisis Masalah & Solusi (Case Studies):**
+
+* **Kasus 1: Race Condition Data Client**
+    * **Problem:** `PlayerDataController` di client meminta data ke server *sebelum* `DataService` di server selesai memuat data dari DataStore, menyebabkan client menerima `nil`.
+    * **Solusi:** Diterapkan alur kerja berbasis sinyal. `DataService` kini mengirim `RemoteEvent` ("PlayerDataReady") ke client setelah data berhasil dimuat ke cache. `PlayerDataController` diubah untuk menunggu sinyal ini terlebih dahulu sebelum mengirim `RemoteFunction` untuk meminta data.
+
+* **Kasus 2: Error Fitur Beta (`UIStyle`)**
+    * **Problem:** Penggunaan `Instance.new("UIStyle")` menyebabkan error `Unable to create an Instance` karena fitur ini masih bersifat Beta dan harus diaktifkan manual di Studio.
+    * **Solusi:** Untuk menjaga stabilitas dan menghindari ketergantungan pada fitur Beta, `UIManager` dirombak. Alih-alih menggunakan `StyleSheet`, `UIManager` kini menerapkan properti style (seperti `BackgroundColor3`, `Font`, `TextColor3`) secara langsung ke setiap elemen UI yang dibuatnya. Prinsip sentralisasi tetap terjaga, hanya metode eksekusinya yang diubah ke cara yang lebih stabil.
+
+* **Kasus 3: Path `require()` Salah**
+    * **Problem:** `PlayerDataController` gagal memuat modul `Signal` karena path `require`-nya salah, menyebabkan seluruh alur client berhenti.
+    * **Solusi:** Path diperbaiki dari `script.Parent.Parent.Shared...` menjadi `Core.Shared.Utils.Signal` yang lebih absolut dan anti-gagal terhadap perubahan struktur folder.
+
+---
+
+**Status Akhir & Kesiapan:**
+Dengan selesainya Fase 4, Core OS kini memiliki arsitektur UI yang solid, modular, dan siap untuk dikembangkan dengan fitur-fitur gameplay yang lebih kompleks. Semua masalah teknis yang ditemukan telah diatasi. **Proyek siap untuk melanjutkan ke Fase 5.**
+</details>
+
+---
+
 ### [2025-10-21 | 19:15:00] [🧱 INFRASTRUCTURE] [FIX]
 
 <details>
