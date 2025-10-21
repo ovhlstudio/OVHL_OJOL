@@ -1,0 +1,18 @@
+# Roblox / Rojo related ignores
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rblx
+*.log
+*.tmp
+*.bak
+*.lock
+rojo*.json.lock
+
+# VS Code
+.vscode/
+.history/
+.DS_Store
+
+# Developer tools (local only)
+Tools/
