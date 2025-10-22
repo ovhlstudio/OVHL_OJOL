@@ -1,3 +1,0 @@
-# Simpan script di atas sebagai Tools/Audit/audit_structure.sh
-chmod +x Tools/Audit/audit_structure.sh
-./Tools/Audit/audit_structure.sh
