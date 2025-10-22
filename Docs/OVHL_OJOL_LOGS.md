@@ -58,6 +58,106 @@ Client berhasil memanggil server event dengan response valid.
 ---
 # LOG BARU MULAI DARI SINI
 
+### \[2025-10-22 | 09:55:00\] \[✅ MILESTONE\] \[🐞 BUGFIX\] \[CORE\] \[PROTOTYPE\]
+
+**Judul:** Fase 2 Selesai - Admin Panel Prototype (Config) Stabil & Server Crash Dibereskan. **Kolaborator:** Hanif Saifudin (Lead Dev) & Gemini (AI Co-Dev) **Branch:** `feature/admin-panel-v1`
+
+<details> <summary><strong>Klik untuk membuka rangkuman detail...</strong></summary>
+
+#### **BAGIAN 1: DIAGNOSA MASALAH (SERVER CRASH)**
+
+##### **Masalah Awal:**
+
+-   Saat testing Fase 2 (Admin Panel), server gagal booting.
+
+-   Log Output menunjukkan error fatal: `[MODULE_INIT_FAIL] [ERROR] Gagal menjalankan init() pada modul 'AdminPanel' ... attempt to index nil with 'Get'`
+
+-   Error yang sama juga terjadi pada modul `TestOrder`, menandakan ini adalah masalah sistemik pada **Core OS**, bukan cuma di AdminPanel.
+
+##### **Akar Masalah (Root Cause):**
+
+-   **Kesalahan Arsitektur di `ServiceManager.lua` (TAHAP 4)**.
+
+-   `ServiceManager` versi lama salah mengimplementasikan *dependency injection*.
+
+-   Dia mem-passing `self` (instansi `ServiceManager` itu sendiri) ke dalam fungsi `module.handler:init(self)`.
+
+-   Padahal, semua modul (seperti `AdminPanel` dan `TestOrder`) didesain untuk menerima `context table` (sebuah tabel berisi *semua* service, contoh: `context.SystemMonitor`).
+
+-   Akibatnya, `context.SystemMonitor` menjadi `nil` dan server *crash*.
+
+#### **BAGIAN 2: PROSES PERBAIKAN (TAHAP 4 & 5)**
+
+##### **Solusi TAHAP 4: Perbaikan Arsitektur `ServiceManager` (3 File)**
+
+1.  **`Core/Server/Services/ServiceManager.lua` (4.1):**
+
+    -   Fungsi `StartAll()` dirombak total.
+
+    -   Sekarang dia membuat `context` *table* baru.
+
+    -   `context` table ini diisi dengan *semua* service yang terdaftar (misal: `context.DataService = ...`, `context.EventService = ...`).
+
+    -   `context` table inilah yang sekarang di-pass ke `module.handler:init(context)`.
+
+2.  **`Core/Server/Modules/AdminPanel/Handler.lua` (4.2):**
+
+    -   Fungsi `init(context)` diubah untuk membaca `context` table.
+
+    -   Semua pengambilan service (misal: `self.SystemMonitor = context.SystemMonitor`) sekarang berjalan sukses.
+
+3.  **`Core/Server/Modules/TestOrder/Handler.lua` (4.3):**
+
+    -   Diberi perlakuan yang sama dengan `AdminPanel`.
+
+    -   Fungsi `init(context)` diubah untuk membaca `context` table.
+
+    -   **Hasil TAHAP 4:** Server nyala, `[MODULE_INIT_FAIL]` hilang.
+
+##### **Solusi TAHAP 5: Perbaikan Masalah Keamanan (`[UNAUTHORIZED]`)**
+
+-   **Masalah Baru:** Server sukses nyala, tapi Admin Panel ditolak akses (`[UNAUTHORIZED] [WARN] ... mencoba akses ... tanpa izin`).
+
+-   **Akar Masalah:** Fungsi `IsAdmin()` di `AdminPanel/Handler.lua` terlalu ketat untuk testing di Studio.
+
+-   **Solusi (5.1):**
+
+    -   `Core/Server/Modules/AdminPanel/Handler.lua` di-update.
+
+    -   Fungsi `IsAdmin()` ditambahi logika `if game:GetService("RunService"):IsStudio() then return true end`.
+
+    -   Ini memberikan akses admin otomatis *hanya* saat testing di Studio.
+
+#### **BAGIAN 3: HASIL AKHIR & STATUS**
+
+-   **Hasil Test Final:** **NO ERROR.**
+
+-   `AdminPanel` berhasil kebuka.
+
+-   `AdminPanel` berhasil memanggil `AdminGetConfig` dan menampilkan data *live* (1.0 dan 0.8).
+
+-   `AdminPanel` berhasil memanggil `AdminUpdateConfig` (mengubah ke 2.0 dan 0.5).
+
+-   Data berhasil tersimpan di `DataService` (dibuktikan dengan *re-open* panel).
+
+-   Gameplay loop (`TestOrder`) juga berjalan normal bersamaan.
+
+**Catatan Prototype:**
+
+-   Admin Panel ini masih *prototype*. Fungsinya baru sebatas membaca/menulis config `economy_multiplier` dan `ai_population_density` ke `DataService`.
+
+-   Saat ini, **belum ada** ***logic*** **gameplay** (seperti `TestOrder`) yang *menggunakan* nilai-nilai config ini.
+
+-   Implementasi *Hot Reload* (`Reload Module`) juga masih `TODO` (fitur Fase 3).
+
+**Status Proyek:**
+
+-   **Fase 2 (Implement Admin Panel Prototype - Config) SELESAI & STABIL.**
+
+-   Server *crash* teratasi.
+
+</details>
+
 ### [2025-10-21 | 21:55:00] [✅ MILESTONE] [GAMEPLAY]
 
 **Judul:** Gameplay Loop Selesai Total - Misi Nyata & Sinkronisasi Real-time.

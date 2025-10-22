@@ -1,5 +1,59 @@
 # 📜 OVHL OjolRoleplay – SUMARY LOGS
 
+### \[2025-10-22 | 09:55:00\] \[SUMMARY LOG\] Milestone 2: Admin Panel Prototype v1 (Config) Stabil & Server Crash Resolved
+
+**Kolaborator:** Hanif Saifudin (Lead Dev) & Gemini (AI Co-Dev) **Tujuan Log:** Mencatat penyelesaian Fase 2 dan perbaikan kritis pada Core OS.
+
+<details> <summary><strong>Klik untuk membuka rangkuman detail...</strong></summary>
+
+#### **BAGIAN 1: PENYELESAIAN FASE 2 (ADMIN PANEL PROTOTYPE)**
+
+##### **Branch Fitur:**
+
+`feature/admin-panel-v1`
+
+##### **Tujuan Utama:**
+
+Mengimplementasikan **Prototype** Admin Panel (Fase 2) yang dapat membaca dan mengubah konfigurasi game secara *real-time*.
+
+##### **Alur Kerja Fitur yang Dicapai:**
+
+1.  **`DataService` (Core):** Di-upgrade untuk bisa me-load dan menyimpan data konfigurasi global (`OVHL_CONFIG`) dari DataStore.
+
+2.  **`AdminPanel UI` (Client):** Sukses memanggil `AdminGetConfig` untuk mengambil data config *live* dari server.
+
+3.  **`AdminPanel Handler` (Server):** Sukses menerima data baru dari client (`AdminUpdateConfig`), menyimpannya ke `DataService`.
+
+4.  **`Persistence`:** Perubahan config terbukti sukses tersimpan permanen di DataStore.
+
+#### **BAGIAN 2: PERBAIKAN KRITIS CORE OS (SERVER CRASH)**
+
+##### **Masalah yang Ditemukan:**
+
+-   Saat pengerjaan Fase 2, ditemukan *bug* arsitektur kritis: Server gagal *booting* (`[MODULE_INIT_FAIL]`) karena `AdminPanel` dan `TestOrder` tidak bisa mendapatkan *dependency* service (misal: `SystemMonitor`).
+
+##### **Akar Masalah & Solusi:**
+
+-   **Masalah:** `ServiceManager.lua` (Core Service) salah dalam menerapkan *dependency injection*. Dia mem-passing `self` (dirinya sendiri) ke modul, padahal modul didesain untuk menerima `context table` (tabel berisi *semua* service).
+
+-   **Solusi (TAHAP 4):**
+
+    1.  `ServiceManager.lua` dirombak untuk membuat dan mem-passing `context table` yang valid (`{ DataService = ..., EventService = ..., ... }`) ke semua modul saat `init()`.
+
+    2.  Semua modul yang terdampak (`AdminPanel/Handler.lua` dan `TestOrder/Handler.lua`) di-update agar membaca dari `context table` baru ini.
+
+-   **Hasil:** *Crash* server teratasi 100%. Fondasi Core OS kini jauh lebih stabil.
+
+#### **STATUS PROYEK SAAT INI:**
+
+Server stabil, *crash* teratasi, dan **Fase 2 (Admin Panel Prototype Config) selesai**.
+
+**Catatan Prototype:** Fungsi panel saat ini baru sebatas menyimpan config ke database. *Logic* gameplay (`TestOrder`, dll) **belum membaca config ini**, dan fitur *Hot Reload* (`Reload Module`) masih `TODO` (Tahap 3).
+
+Proyek siap untuk melanjutkan ke Fase 3 (Implementasi *Hot Reload*).
+
+</details>
+
 ### [2025-10-21 | 22:15:00] [SUMMARY LOG] Milestone 1: Fondasi Core OS & Gameplay Loop v1 Selesai
 **Kolaborator:** Hanif Saifudin (Lead Dev) & Gemini (AI Co-Dev)
 **Tujuan Log:** Menyediakan rangkuman konteks penuh untuk onboarding cepat bagi pengembang atau AI di sesi pengembangan berikutnya.

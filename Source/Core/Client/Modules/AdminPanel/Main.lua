@@ -1,4 +1,15 @@
 --!strict
+--[[
+	@project OVHL_OJOL
+	@file Main.lua (AdminPanel)
+	@author OmniverseHighland + AI Co-Dev System
+	@version 2.0.0
+	
+	@description
+	Client-side logic untuk Admin Panel.
+	VERSION 2.0.0: Menghapus hardcode, mengambil config live dari server,
+	dan auto-refresh saat config di-update.
+]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Core = ReplicatedStorage:WaitForChild("Core")
 local UIManager = require(Core.Client.Services.UIManager)
@@ -7,13 +18,26 @@ local Events = ReplicatedStorage:WaitForChild("OVHL_Events")
 local AdminPanel = {}
 local adminScreen = nil
 local isAdminPanelVisible = false
+local currentConfig = {} -- Cache untuk config
+local economyInput: TextBox = nil -- Referensi ke input box
+local aiInput: TextBox = nil -- Referensi ke input box
 
 function AdminPanel:Init()
     self:CreateAdminAccessButton()
+    
+    -- ================================================================
+    -- FIX #1: Dengarkan event "ConfigUpdated" dari server
+    -- ================================================================
+    local configUpdatedEvent = Events:FindFirstChild("ConfigUpdated")
+    if configUpdatedEvent and configUpdatedEvent:IsA("RemoteEvent") then
+        configUpdatedEvent.OnClientEvent:Connect(function(newConfig)
+            self:OnConfigUpdated(newConfig)
+        end)
+    end
 end
 
 function AdminPanel:CreateAdminAccessButton()
-    local screen = UIManager:CreateScreen("AdminUI")
+    local screen = UIManager:CreateScreen("AdminAccessUI") -- Pisahkan UI tombol
     
     -- Hidden admin access button (bisa di-move ke corner)
     local accessBtn = UIManager:AddButton({
@@ -39,7 +63,9 @@ function AdminPanel:ToggleAdminPanel()
 end
 
 function AdminPanel:ShowAdminPanel()
-    adminScreen = UIManager:CreateScreen("AdminUI")
+    if isAdminPanelVisible then return end
+    
+    adminScreen = UIManager:CreateScreen("AdminPanelUI") -- UI Panel Utama
     
     -- Main Admin Window
     local adminWindow = UIManager:CreateWindow({
@@ -81,11 +107,11 @@ function AdminPanel:ShowAdminPanel()
         Position = UDim2.new(0.05, 0, 0.18, 0)
     })
     
-    local economyInput = UIManager:AddTextBox({
+    economyInput = UIManager:AddTextBox({
         Parent = adminWindow,
         Name = "EconomyInput",
-        Placeholder = "1.0",
-        Text = "1.0",
+        Placeholder = "Loading...",
+        Text = "", -- Akan diisi oleh FetchConfig
         Size = UDim2.new(0.2, 0, 0.04, 0),
         Position = UDim2.new(0.35, 0, 0.18, 0)
     })
@@ -99,11 +125,11 @@ function AdminPanel:ShowAdminPanel()
         Position = UDim2.new(0.05, 0, 0.25, 0)
     })
     
-    local aiInput = UIManager:AddTextBox({
+    aiInput = UIManager:AddTextBox({
         Parent = adminWindow,
         Name = "AIInput", 
-        Placeholder = "0.8",
-        Text = "0.8",
+        Placeholder = "Loading...",
+        Text = "", -- Akan diisi oleh FetchConfig
         Size = UDim2.new(0.2, 0, 0.04, 0),
         Position = UDim2.new(0.35, 0, 0.25, 0)
     })
@@ -174,14 +200,49 @@ function AdminPanel:ShowAdminPanel()
     end)
     
     isAdminPanelVisible = true
+    
+    -- ================================================================
+    -- FIX #2: Ambil config dari server SETELAH UI dibuat
+    -- ================================================================
+    self:FetchConfig()
 end
 
 function AdminPanel:HideAdminPanel()
-    local screen = UIManager:CreateScreen("AdminUI")
+    local screen = UIManager:CreateScreen("AdminPanelUI")
     if screen:FindFirstChild("AdminPanel") then
         screen.AdminPanel:Destroy()
     end
     isAdminPanelVisible = false
+    -- Kosongkan referensi
+    economyInput = nil
+    aiInput = nil
+end
+
+function AdminPanel:FetchConfig()
+    -- Ambil config dari server
+    local getConfigFunc = Events:FindFirstChild("AdminGetConfig")
+    if getConfigFunc and getConfigFunc:IsA("RemoteFunction") then
+        local config = getConfigFunc:InvokeServer()
+        if config then
+            self:OnConfigUpdated(config) -- Gunakan fungsi yang sama untuk update UI
+        else
+            UIManager:ShowToastNotification("❌ Gagal mengambil config dari server", 3)
+        end
+    else
+        UIManager:ShowToastNotification("⚠️ Fitur admin belum siap (GetConfig)", 3)
+    end
+end
+
+function AdminPanel:OnConfigUpdated(newConfig: table)
+    -- Fungsi ini dipanggil saat pertama kali load ATAU saat ada update
+    currentConfig = newConfig
+    
+    if isAdminPanelVisible and economyInput and aiInput then
+        -- Update UI jika panel sedang terbuka
+        economyInput.Text = tostring(currentConfig.economy_multiplier or 1.0)
+        aiInput.Text = tostring(currentConfig.ai_population_density or 0.8)
+        UIManager:ShowToastNotification("🔄 Config berhasil disinkronkan!", 2)
+    end
 end
 
 function AdminPanel:ApplyConfigChanges(updates)
@@ -190,11 +251,14 @@ function AdminPanel:ApplyConfigChanges(updates)
         local success = applyFunc:InvokeServer(updates)
         if success then
             UIManager:ShowToastNotification("✅ Config updated successfully!", 3)
+            -- Kita tidak perlu update UI manual di sini,
+            -- karena server akan kirim event "ConfigUpdated"
+            -- yang akan ditangkap oleh :OnConfigUpdated
         else
-            UIManager:ShowToastNotification("❌ Failed to update config", 3)
+            UIManager:ShowToastNotification("❌ Gagal update config", 3)
         end
     else
-        UIManager:ShowToastNotification("⚠️ Admin features not ready yet", 3)
+        UIManager:ShowToastNotification("⚠️ Admin features not ready yet (UpdateConfig)", 3)
     end
 end
 
@@ -203,13 +267,14 @@ function AdminPanel:ReloadModule(moduleName)
     if reloadFunc and reloadFunc:IsA("RemoteFunction") then
         local success = reloadFunc:InvokeServer(moduleName)
         if success then
-            UIManager:ShowToastNotification("✅ " .. moduleName .. " reloaded!", 3)
+            UIManager:ShowToastNotification("✅ " .. moduleName .. " reload requested!", 3)
         else
-            UIManager:ShowToastNotification("❌ Failed to reload " .. moduleName, 3)
+            UIManager:ShowToastNotification("❌ Failed to request reload " .. moduleName, 3)
         end
     else
-        UIManager:ShowToastNotification("⚠️ Admin features not ready yet", 3)
+        UIManager:ShowToastNotification("⚠️ Admin features not ready yet (ReloadModule)", 3)
     end
 end
 
 return AdminPanel
+

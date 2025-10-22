@@ -1,8 +1,21 @@
 --!strict
+--[[
+	@project OVHL_OJOL
+	@file DataService.lua
+	@author OmniverseHighland + AI Co-Dev System
+	@version 2.0.0
+	
+	@description
+	Storage layer with autosave, retry, and local cache.
+	VERSION 2.0.0: Menambahkan logic _LoadGlobalConfig saat Init.
+]]
+
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
-local Core = game:GetService("ReplicatedStorage"):WaitForChild("Core")
-local Config = require(Core.Shared.Config)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Core = ReplicatedStorage:WaitForChild("Core")
+local DefaultConfig = require(Core.Shared.Config) -- Load default config dari file
+
 local DataService = {}
 DataService.__index = DataService
 local ProfileTemplate = { Uang = 5000, Level = 1, XP = 0 }
@@ -15,17 +28,54 @@ function DataService.new(sm: any)
     self.playerDataStore = DataStoreService:GetDataStore("OVHL_PlayerData_v1")
     self.globalDataStore = DataStoreService:GetDataStore("OVHL_GlobalData_v1")
     self.playerDataCache = {}
-    self.globalDataCache = {}
+    self.globalDataCache = {} -- Inisialisasi sebagai tabel kosong
     return self
 end
 
 function DataService:Init()
+    -- ================================================================
+    -- FIX: Load global config saat server startup
+    -- ================================================================
+    self:_LoadGlobalConfig()
+    
+    -- Setup player listeners
     Players.PlayerAdded:Connect(function(p) self:_onPlayerAdded(p) end)
     Players.PlayerRemoving:Connect(function(p) self:_onPlayerRemoving(p) end)
     game:BindToClose(function() self:_onServerShutdown() end)
     task.spawn(function() self:_autoSaveLoop() end)
     self.SystemMonitor:Log("DataService", "INFO", "INIT_SUCCESS", "DataService berhasil diinisialisasi.")
 end
+
+-- FUNGSI BARU UNTUK LOAD GLOBAL CONFIG
+function DataService:_LoadGlobalConfig()
+    self.SystemMonitor:Log("DataService", "INFO", "GLOBAL_LOAD_START", "Memuat global config (OVHL_CONFIG)...")
+    
+    local success, data = pcall(function()
+        return self.globalDataStore:GetAsync("OVHL_CONFIG")
+    end)
+    
+    if success then
+        if data and typeof(data) == "table" then
+            -- Ditemukan config di DataStore, gabungkan dengan default (jika ada key baru)
+            self.globalDataCache = table.clone(DefaultConfig)
+            for k, v in pairs(data) do
+                self.globalDataCache[k] = v
+            end
+            self.SystemMonitor:Log("DataService", "INFO", "GLOBAL_LOAD_SUCCESS", "Config global berhasil di-load dari DataStore.")
+        else
+            -- Tidak ada config di DataStore, gunakan default dari file
+            self.globalDataCache = table.clone(DefaultConfig)
+            self.SystemMonitor:Log("DataService", "INFO", "GLOBAL_LOAD_DEFAULT", "Config global tidak ditemukan, menggunakan default dari Config.lua.")
+            -- Simpan default ini ke DataStore
+            self:SetGlobal("OVHL_CONFIG", self.globalDataCache)
+        end
+    else
+        -- Gagal load dari DataStore, gunakan default sebagai fallback
+        self.globalDataCache = table.clone(DefaultConfig)
+        self.SystemMonitor:Log("DataService", "ERROR", "GLOBAL_LOAD_FAIL", "Gagal load config dari DataStore. Menggunakan default. Error: " .. tostring(data))
+    end
+end
+
 
 function DataService:GetData(player: Player) return self.playerDataCache[player] end
 
@@ -43,10 +93,15 @@ function DataService:AddUang(player: Player, amount: number)
     end
 end
 
--- NEW METHODS FOR GLOBAL CONFIG
+-- METHODS FOR GLOBAL CONFIG (DIPERBARUI)
 function DataService:GetGlobal(key: string?)
     if not self.globalDataCache then
         self.globalDataCache = {}
+    end
+    
+    -- Jika key adalah "OVHL_CONFIG", return seluruh cache config
+    if key == "OVHL_CONFIG" then
+        return self.globalDataCache
     end
     
     if key then
@@ -61,11 +116,18 @@ function DataService:SetGlobal(key: string, value: any)
         self.globalDataCache = {}
     end
     
-    self.globalDataCache[key] = value
+    -- Kita asumsikan SetGlobal("OVHL_CONFIG", dataTabel)
+    if key == "OVHL_CONFIG" and typeof(value) == "table" then
+        self.globalDataCache = value
+    else
+        -- Handle jika ingin set key individual
+        self.globalDataCache[key] = value
+    end
     
     -- Save to DataStore async
     task.spawn(function()
         local success, err = pcall(function()
+            -- Simpan seluruh cache config
             self.globalDataStore:SetAsync("OVHL_CONFIG", self.globalDataCache)
         end)
         
@@ -74,6 +136,7 @@ function DataService:SetGlobal(key: string, value: any)
         end
     end)
 end
+
 
 function DataService:_onPlayerAdded(player: Player) self:_loadPlayerData(player) end
 function DataService:_onPlayerRemoving(player: Player) self:_savePlayerData(player) self.playerDataCache[player] = nil end
@@ -92,7 +155,8 @@ function DataService:_loadPlayerData(player: Player)
 end
 
 function DataService:_savePlayerData(player: Player) if not self.playerDataCache[player] then return end pcall(function() self.playerDataStore:SetAsync("Player_" .. player.UserId, self.playerDataCache[player]) end) end
-function DataService:_autoSaveLoop() while true do task.wait(Config.autosave_interval) for _, player in ipairs(Players:GetPlayers()) do self:_savePlayerData(player) end end end
+function DataService:_autoSaveLoop() while true do task.wait(DefaultConfig.autosave_interval) for _, player in ipairs(Players:GetPlayers()) do self:_savePlayerData(player) end end end
 function DataService:_onServerShutdown() for _, player in ipairs(Players:GetPlayers()) do self:_savePlayerData(player) end task.wait(2) end
 
 return DataService
+
