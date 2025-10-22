@@ -1,5 +1,36 @@
 # 📜 OVHL OjolRoleplay – SUMARY LOGS
 
+### [2025-10-22 | 14:05:00] [SUMMARY LOG] Operasi Upgrade OS Selesai - Core OS v2.3 Enterprise (Client Auto-Detek)!
+**Kolaborator:** Hanif Saifudin (Lead Dev) & Gemini (AI Co-Dev)
+**Tujuan Log:** Menyediakan rangkuman konteks penuh tentang upgrade besar pada arsitektur Core OS Client.
+
+<details>
+<summary><strong>Klik untuk membuka rangkuman detail...</strong></summary>
+
+---
+
+#### **MASALAH AWAL:**
+Arsitektur `ClientBootstrapper` v1.0 bersifat manual (`require` satu per satu), melanggar "Hukum Wajib Zero-Touch" dan visi "Reusable Engine" Core OS. Setiap penambahan/penghapusan modul client memerlukan modifikasi manual pada file `ClientBootstrapper.lua`.
+
+#### **SOLUSI YANG DIIMPLEMENTASIKAN:**
+Melakukan **"Operasi Upgrade OS" (FASE 1.5)** untuk merombak total arsitektur client:
+1.  **Struktur Folder Standar:** Semua kode client (termasuk `PlayerDataController` dan `MainHUD`) dipindahkan ke dalam subfolder di `Source/Core/Client/Modules/`.
+2.  **Sistem Manifest Client:** Diperkenalkan file `ClientManifest.lua` (nama diubah dari `manifest.client.lua` karena limitasi Roblox) di setiap folder modul client. File ini berisi metadata penting: `name`, `autoInit` (boolean), `loadOrder` (number), dan `entry` (string nama file `Main.lua`).
+3.  **`ClientBootstrapper` v2.3 (Otomatis):** File `ClientBootstrapper.lua` ditulis ulang total menjadi versi 2.3 yang cerdas:
+    * **Auto-Deteksi:** Secara otomatis men-scan semua folder di `Modules/`.
+    * **Validasi Manifest:** Membaca dan memvalidasi `ClientManifest.lua`.
+    * **Load Order:** Mengurutkan modul berdasarkan `loadOrder`.
+    * **Auto-Init:** Hanya me-`require` dan memanggil `:Init()` pada modul yang `autoInit = true`.
+    * **Dependency Injection:** Menyediakan `DI_Container` (`UIManager`, `PlayerDataController`, dll.) ke fungsi `:Init()` modul.
+    * **Error Handling:** Memberikan log yang jelas jika manifest rusak atau *entry file* tidak ditemukan.
+4.  **SOP Logging v1.0:** Mengimplementasikan standar *prefix log* baru (`[OVHL OS ENTERPRISE vX.X.X]` dan `[OVHL SYS MONITOR v1.0]`) pada `SystemMonitor`, `Bootstrapper` (Server), dan `ClientBootstrapper`.
+
+#### **HASIL AKHIR:**
+`Core OS` (Server & Client) kini 100% *auto-detek* dan *plug-and-play*. Penambahan atau penghapusan modul (Server maupun Client) **TIDAK MEMERLUKAN MODIFIKASI** pada file `Bootstrapper` atau `ClientBootstrapper`. Visi "Reusable Engine" tercapai. Log output juga menjadi lebih profesional. **Proyek siap untuk pengembangan modul gameplay.**
+
+</details>
+
+
 ### \[2025-10-22 | 09:55:00\] \[SUMMARY LOG\] Milestone 2: Admin Panel Prototype v1 (Config) Stabil & Server Crash Resolved
 
 **Kolaborator:** Hanif Saifudin (Lead Dev) & Gemini (AI Co-Dev) **Tujuan Log:** Mencatat penyelesaian Fase 2 dan perbaikan kritis pada Core OS.

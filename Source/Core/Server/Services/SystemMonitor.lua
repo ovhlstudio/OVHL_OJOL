@@ -1,45 +1,16 @@
 --!strict
---[[
-	@project OVHL_OJOL
-	@file SystemMonitor.lua
-	@author OmniverseHighland + AI Co-Dev System
-	
-	@description
-	Service terpusat untuk logging, monitoring, dan pelacakan kesehatan sistem.
-	Menyediakan format log yang standar untuk memudahkan debugging.
-]]
-
+--[[ @project OVHL_OJOL @file SystemMonitor.lua (SOP Logging v1.0) ]]
 local SystemMonitor = {}
-
--- ServiceManager di-inject saat inisialisasi
 local serviceManager: any
+local LOG_PREFIX = "[OVHL SYS MONITOR v1.0] " -- INI PREFIX BARU KITA!
 
--- Dibuat sebagai singleton karena bersifat global
-function SystemMonitor:Initialize(sm: any)
-	if serviceManager then return end -- Sudah diinisialisasi
-	serviceManager = sm
-	self:Log("SystemMonitor", "INFO", "INIT_SUCCESS", "SystemMonitor siap digunakan.")
+function SystemMonitor:Initialize(sm: any) if serviceManager then return end serviceManager = sm self:Log("SystemMonitor", "INFO", "INIT_SUCCESS", "SystemMonitor siap.") end
+
+function SystemMonitor:Log(source: string, level: string, code: string, message: string)
+	-- Tambahin prefix di sini!
+	local log = LOG_PREFIX .. string.format("[%s] [%s] [%s] %s", source, code, level, message)
+	if level == "ERROR" or level == "WARN" then warn(log) else print(log) end
 end
 
--- Fungsi logging utama
-function SystemMonitor:Log(source: string, level: "INFO" | "WARN" | "ERROR", code: string, message: string)
-	local logMessage = string.format("[%s] [%s] [%s] %s", source, code, level, message)
-	
-	if level == "ERROR" then
-		warn(logMessage)
-	elseif level == "WARN" then
-		warn(logMessage)
-	else
-		print(logMessage)
-	end
-	
-	-- TODO: Integrasi dengan log file atau webhook eksternal di masa depan
-end
-
--- Stub kosong untuk memenuhi kontrak .new() dari Bootstrapper
--- Inisialisasi sebenarnya terjadi di :Initialize()
-function SystemMonitor.new()
-	return SystemMonitor
-end
-
+function SystemMonitor.new() return SystemMonitor end -- Singleton
 return SystemMonitor
