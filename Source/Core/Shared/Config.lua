@@ -1,40 +1,15 @@
 --!strict
---[[
-	@project OVHL_OJOL
-	@file Config.lua
-	@author OmniverseHighland + AI Co-Dev System
-	
-	@description
-	Manifest Konfigurasi Global.
-	Semua pengaturan sistem yang bersifat statis dan dapat diubah
-	ada di sini. Akan dibaca oleh Bootstrapper saat startup.
-]]
-
+--[[ @project OVHL_OJOL @file Config.lua (Defaults) ]]
 local Config = {
-	-- Pengaturan Umum
-	game_name = "Ojol Roleplay",
-	version = "1.0.0",
-	enable_debug_mode = true, -- Aktifkan log dan monitor tambahan
-
-	-- Pengaturan DataService
-	autosave_interval = 300, -- Interval autosave data pemain (dalam detik)
-	datastore_retry_attempts = 3, -- Jumlah percobaan ulang jika DataStore gagal
-	datastore_retry_delay = 5, -- Jeda antar percobaan ulang (dalam detik)
-	
-	-- Pengaturan Hot Reload
-	enable_hot_reload = true, -- Mengizinkan reload modul saat runtime
-
-	-- Pengaturan Ekonomi
-	economy_multiplier = 1.0, -- Pengali pendapatan default
-
-	-- Pengaturan Admin
-	admin_user_ids = {
-		1, -- UserId Roblox Studio (Owner)
-		-- Tambahkan ID admin lain di sini
-	},
-
-	-- Pengaturan StyleService (UI)
-	default_ui_theme = "default",
+	game_name = "Ojol Roleplay", version = "1.0.0", enable_debug_mode = true,
+	autosave_interval = 300, datastore_retry_attempts = 3, datastore_retry_delay = 5,
+	enable_hot_reload = false, -- Belum diimplementasi
+	economy_multiplier = 1.0,
+	admin_user_ids = {1}, -- Owner Studio
+	default_ui_theme = "Default",
+	-- Config Gameplay (akan di-expand)
+	traffic_default = 0.5,
+	base_spawn_rate = 10, -- Detik antar spawn NPC
+	player_count_scaling_factor = 0.8, -- Spawn rate = base / (playerCount * factor)
 }
-
 return table.freeze(Config)
