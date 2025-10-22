@@ -1,0 +1,1898 @@
+=== OVHL FILE CONTENTS ===
+Generated on: Wed, Oct 22, 2025 09:05:29
+Branch: feature/admin-panel-v1
+==========================
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Client/Init.client.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+--[[
+	@project OVHL_OJOL
+	@file Init.client.lua
+	@author OmniverseHighland + AI Co-Dev System
+	@version 3.0.0
+	
+	@description
+	Entry point client yang bersih, hanya memanggil bootstrapper.
+]]
+
+local Core = game:GetService("ReplicatedStorage"):WaitForChild("Core")
+local ClientBootstrapper = require(Core.Client.ClientBootstrapper)
+
+ClientBootstrapper:Start()
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Client/ClientBootstrapper.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Core = ReplicatedStorage:WaitForChild("Core")
+local UIManager = require(Core.Client.Services.UIManager)
+local PlayerDataController = require(Core.Client.Controllers.PlayerDataController)
+local MainHUD = require(Core.Client.UI.MainHUD)
+local OrderController = require(Core.Client.Controllers.OrderController)
+local DevUITester = require(Core.Client.Modules.DevUITester.Main)
+local AdminPanel = require(Core.Client.Modules.AdminPanel.Main)
+
+local ClientBootstrapper = {}
+
+function ClientBootstrapper:Start()
+    print("🚀 [ClientBootstrapper] Memulai inisialisasi sisi client...")
+    
+    -- Initialize UIManager first
+    UIManager:Init()
+    
+    -- Initialize controllers
+    PlayerDataController:Init({})
+    
+    local dependencies = {
+        UIManager = UIManager
+    }
+    
+    MainHUD:Init(dependencies)
+    OrderController:Init(dependencies)
+    DevUITester:Init(dependencies)
+    AdminPanel:Init(dependencies)
+    
+    print("✅ [ClientBootstrapper] Inisialisasi client selesai.")
+end
+
+return ClientBootstrapper
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Client/Controllers/OrderController.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+--[[
+	@file OrderController.lua
+	@version 1.2.2
+	@description Menampilkan notifikasi saat misi selesai.
+]]
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Events = ReplicatedStorage:WaitForChild("OVHL_Events")
+local OrderController = {}
+local UIManager: any
+
+function OrderController:Init(d: {UIManager: any})
+	UIManager = d.UIManager
+	Events.NewOrderNotification.OnClientEvent:Connect(function(o) self:_showOrderNotification(o) end)
+	Events.UpdateMissionUI.OnClientEvent:Connect(function(o) self:_showMissionTracker(o) end)
+	Events.MissionCompleted.OnClientEvent:Connect(function(payment) self:_onMissionCompleted(payment) end)
+end
+
+function OrderController:_showOrderNotification(o: {from: string, to: string, payment: number})
+	local s = UIManager:CreateScreen("NotificationUI")
+	if s:FindFirstChild("OrderNotification") then s.OrderNotification:Destroy() end
+	local nW=UIManager:CreateWindow({Parent=s,Name="OrderNotification",Size=UDim2.fromScale(0.3,0.25),Position=UDim2.fromScale(0.5,0.4),AnchorPoint=Vector2.new(0.5,0.5)})
+	UIManager:AddTextLabel({Parent=nW,Name="Title",Text="ORDER BARU!",Size=UDim2.fromScale(1,0.2),TextXAlignment=Enum.TextXAlignment.Center,TextSize=22})
+	local dT=string.format("Dari: %s\nTujuan: %s\nBayaran: Rp. %d",o.from,o.to,o.payment)
+	UIManager:AddTextLabel({Parent=nW,Name="Details",Text=dT,Size=UDim2.new(0.9,0,0.4,0),Position=UDim2.fromScale(0.5,0.45),AnchorPoint=Vector2.new(0.5,0.5),TextXAlignment=Enum.TextXAlignment.Left})
+	local aB=UIManager:AddButton({Parent=nW,Name="AcceptButton",Text="TERIMA",Size=UDim2.new(0.4,0,0.2,0),Position=UDim2.fromScale(0.25,0.85),AnchorPoint=Vector2.new(0.5,0.5)})
+	local dB=UIManager:AddButton({Parent=nW,Name="DeclineButton",Text="TOLAK",Size=UDim2.new(0.4,0,0.2,0),Position=UDim2.fromScale(0.75,0.85),AnchorPoint=Vector2.new(0.5,0.5)})
+	local rE:RemoteEvent=Events:WaitForChild("RespondToOrder")
+	aB.MouseButton1Click:Connect(function()rE:FireServer(true) nW:Destroy()end)
+	dB.MouseButton1Click:Connect(function()rE:FireServer(false) nW:Destroy()end)
+end
+
+function OrderController:_showMissionTracker(o: {to: string}) UIManager:CreateMissionTracker(o) end
+
+function OrderController:_onMissionCompleted(payment: number)
+	UIManager:DestroyMissionTracker()
+	UIManager:ShowToastNotification("Misi Selesai! +Rp. " .. tostring(payment))
+end
+
+return OrderController
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Client/Controllers/PlayerDataController.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+--[[
+	@file PlayerDataController.lua
+	@version 2.1.0
+	@description Kini mendengarkan update data dari server.
+]]
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Core = ReplicatedStorage:WaitForChild("Core")
+local Events = ReplicatedStorage:WaitForChild("OVHL_Events")
+local Signal = require(Core.Shared.Utils.Signal)
+
+local PlayerDataController = {}
+local playerData = nil
+PlayerDataController.OnDataReady = Signal.new()
+PlayerDataController.OnDataUpdated = Signal.new() -- Sinyal baru
+
+function PlayerDataController:Init(dependencies: {any})
+	-- Menunggu sinyal data awal siap
+	Events:WaitForChild("PlayerDataReady").OnClientEvent:Connect(function()
+		local requestFunc: RemoteFunction = Events:WaitForChild("RequestPlayerData")
+		playerData = requestFunc:InvokeServer()
+		if playerData then
+			PlayerDataController.OnDataReady:Fire(playerData)
+		end
+	end)
+	
+	-- Mendengarkan update data berkelanjutan
+	Events:WaitForChild("UpdatePlayerData").OnClientEvent:Connect(function(updatedData: table)
+		if not playerData then return end
+		
+		-- Gabungkan data baru ke data lokal
+		for key, value in pairs(updatedData) do
+			playerData[key] = value
+		end
+		
+		-- Kirim sinyal bahwa data telah di-update
+		PlayerDataController.OnDataUpdated:Fire(playerData)
+	end)
+end
+
+function PlayerDataController:GetData() return playerData end
+
+return PlayerDataController
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Client/Modules/AdminPanel/Main.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Core = ReplicatedStorage:WaitForChild("Core")
+local UIManager = require(Core.Client.Services.UIManager)
+local Events = ReplicatedStorage:WaitForChild("OVHL_Events")
+
+local AdminPanel = {}
+local adminScreen = nil
+local isAdminPanelVisible = false
+
+function AdminPanel:Init()
+    self:CreateAdminAccessButton()
+end
+
+function AdminPanel:CreateAdminAccessButton()
+    local screen = UIManager:CreateScreen("AdminUI")
+    
+    -- Hidden admin access button (bisa di-move ke corner)
+    local accessBtn = UIManager:AddButton({
+        Parent = screen,
+        Name = "AdminAccessBtn",
+        Text = "⚙️",
+        Size = UDim2.new(0, 40, 0, 40),
+        Position = UDim2.new(0.95, 0, 0.02, 0),
+        AnchorPoint = Vector2.new(1, 0)
+    })
+    
+    accessBtn.MouseButton1Click:Connect(function()
+        self:ToggleAdminPanel()
+    end)
+end
+
+function AdminPanel:ToggleAdminPanel()
+    if isAdminPanelVisible then
+        self:HideAdminPanel()
+    else
+        self:ShowAdminPanel()
+    end
+end
+
+function AdminPanel:ShowAdminPanel()
+    adminScreen = UIManager:CreateScreen("AdminUI")
+    
+    -- Main Admin Window
+    local adminWindow = UIManager:CreateWindow({
+        Parent = adminScreen,
+        Name = "AdminPanel",
+        Size = UDim2.new(0.8, 0, 0.8, 0),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Style = "HUD"
+    })
+    
+    -- Title
+    UIManager:AddTextLabel({
+        Parent = adminWindow,
+        Name = "Title",
+        Text = "🛠️ OVHL ADMIN PANEL",
+        Size = UDim2.new(1, 0, 0.08, 0),
+        Position = UDim2.new(0, 0, 0, 0),
+        TextXAlignment = Enum.TextXAlignment.Center,
+        TextSize = 24
+    })
+    
+    -- Config Editor Section
+    UIManager:AddTextLabel({
+        Parent = adminWindow,
+        Name = "ConfigSectionTitle",
+        Text = "⚙️ GAME CONFIG",
+        Size = UDim2.new(0.9, 0, 0.05, 0),
+        Position = UDim2.new(0.05, 0, 0.1, 0),
+        TextSize = 18
+    })
+    
+    -- Economy Multiplier
+    UIManager:AddTextLabel({
+        Parent = adminWindow,
+        Name = "EconomyLabel",
+        Text = "Economy Multiplier:",
+        Size = UDim2.new(0.3, 0, 0.04, 0),
+        Position = UDim2.new(0.05, 0, 0.18, 0)
+    })
+    
+    local economyInput = UIManager:AddTextBox({
+        Parent = adminWindow,
+        Name = "EconomyInput",
+        Placeholder = "1.0",
+        Text = "1.0",
+        Size = UDim2.new(0.2, 0, 0.04, 0),
+        Position = UDim2.new(0.35, 0, 0.18, 0)
+    })
+    
+    -- AI Density
+    UIManager:AddTextLabel({
+        Parent = adminWindow,
+        Name = "AILabel",
+        Text = "AI Population:",
+        Size = UDim2.new(0.3, 0, 0.04, 0),
+        Position = UDim2.new(0.05, 0, 0.25, 0)
+    })
+    
+    local aiInput = UIManager:AddTextBox({
+        Parent = adminWindow,
+        Name = "AIInput", 
+        Placeholder = "0.8",
+        Text = "0.8",
+        Size = UDim2.new(0.2, 0, 0.04, 0),
+        Position = UDim2.new(0.35, 0, 0.25, 0)
+    })
+    
+    -- Module Management Section
+    UIManager:AddTextLabel({
+        Parent = adminWindow,
+        Name = "ModuleSectionTitle",
+        Text = "📦 MODULE MANAGEMENT",
+        Size = UDim2.new(0.9, 0, 0.05, 0),
+        Position = UDim2.new(0.05, 0, 0.35, 0),
+        TextSize = 18
+    })
+    
+    -- Reload TestOrder Button
+    local reloadTestOrderBtn = UIManager:AddButton({
+        Parent = adminWindow,
+        Name = "ReloadTestOrderBtn",
+        Text = "🔄 Reload TestOrder",
+        Size = UDim2.new(0.4, 0, 0.05, 0),
+        Position = UDim2.new(0.05, 0, 0.43, 0)
+    })
+    
+    reloadTestOrderBtn.MouseButton1Click:Connect(function()
+        self:ReloadModule("TestOrder")
+    end)
+    
+    -- Reload DevUITester Button
+    local reloadDevBtn = UIManager:AddButton({
+        Parent = adminWindow,
+        Name = "ReloadDevBtn", 
+        Text = "🔄 Reload DevUITester",
+        Size = UDim2.new(0.4, 0, 0.05, 0),
+        Position = UDim2.new(0.55, 0, 0.43, 0)
+    })
+    
+    reloadDevBtn.MouseButton1Click:Connect(function()
+        self:ReloadModule("DevUITester")
+    end)
+    
+    -- Apply Config Button
+    local applyBtn = UIManager:AddButton({
+        Parent = adminWindow,
+        Name = "ApplyConfigBtn",
+        Text = "💾 APPLY CONFIG",
+        Size = UDim2.new(0.9, 0, 0.06, 0),
+        Position = UDim2.new(0.05, 0, 0.55, 0)
+    })
+    
+    applyBtn.MouseButton1Click:Connect(function()
+        self:ApplyConfigChanges({
+            economy_multiplier = tonumber(economyInput.Text) or 1.0,
+            ai_population_density = tonumber(aiInput.Text) or 0.8
+        })
+    end)
+    
+    -- Close Button
+    local closeBtn = UIManager:AddButton({
+        Parent = adminWindow,
+        Name = "CloseAdminBtn",
+        Text = "❌ CLOSE ADMIN PANEL", 
+        Size = UDim2.new(0.9, 0, 0.06, 0),
+        Position = UDim2.new(0.05, 0, 0.85, 0)
+    })
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        self:HideAdminPanel()
+    end)
+    
+    isAdminPanelVisible = true
+end
+
+function AdminPanel:HideAdminPanel()
+    local screen = UIManager:CreateScreen("AdminUI")
+    if screen:FindFirstChild("AdminPanel") then
+        screen.AdminPanel:Destroy()
+    end
+    isAdminPanelVisible = false
+end
+
+function AdminPanel:ApplyConfigChanges(updates)
+    local applyFunc = Events:FindFirstChild("AdminUpdateConfig")
+    if applyFunc and applyFunc:IsA("RemoteFunction") then
+        local success = applyFunc:InvokeServer(updates)
+        if success then
+            UIManager:ShowToastNotification("✅ Config updated successfully!", 3)
+        else
+            UIManager:ShowToastNotification("❌ Failed to update config", 3)
+        end
+    else
+        UIManager:ShowToastNotification("⚠️ Admin features not ready yet", 3)
+    end
+end
+
+function AdminPanel:ReloadModule(moduleName)
+    local reloadFunc = Events:FindFirstChild("AdminReloadModule")
+    if reloadFunc and reloadFunc:IsA("RemoteFunction") then
+        local success = reloadFunc:InvokeServer(moduleName)
+        if success then
+            UIManager:ShowToastNotification("✅ " .. moduleName .. " reloaded!", 3)
+        else
+            UIManager:ShowToastNotification("❌ Failed to reload " .. moduleName, 3)
+        end
+    else
+        UIManager:ShowToastNotification("⚠️ Admin features not ready yet", 3)
+    end
+end
+
+return AdminPanel
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Client/Modules/DevUITester/Main.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Core = ReplicatedStorage:WaitForChild("Core")
+local UIManager = require(Core.Client.Services.UIManager)
+
+local DevUITester = {}
+
+function DevUITester:Init()
+    self:CreateDevToolsUI()
+end
+
+function DevUITester:CreateDevToolsUI()
+    local screen = UIManager:CreateScreen("DevToolsUI")
+    
+    -- Dev Toggle Button
+    local toggleBtn = UIManager:AddButton({
+        Parent = screen,
+        Name = "DevToggle",
+        Text = "🛠️ SHOW DEV TOOLS",
+        Size = UDim2.new(0.15, 0, 0.05, 0),
+        Position = UDim2.new(0.02, 0, 0.02, 0)
+    })
+    
+    local componentsWindow = nil
+    local isVisible = false
+    
+    toggleBtn.MouseButton1Click:Connect(function()
+        if isVisible then
+            self:HideComponentsTest()
+            toggleBtn.Text = "🛠️ SHOW DEV TOOLS"
+            isVisible = false
+        else
+            self:ShowComponentsTest()
+            toggleBtn.Text = "❌ HIDE DEV TOOLS" 
+            isVisible = true
+        end
+    end)
+end
+
+function DevUITester:ShowComponentsTest()
+    local screen = UIManager:CreateScreen("DevToolsUI")
+    
+    -- Components Test Window
+    local testWindow = UIManager:CreateWindow({
+        Parent = screen,
+        Name = "ComponentsTestWindow",
+        Size = UDim2.new(0.4, 0, 0.6, 0),
+        Position = UDim2.new(0.3, 0, 0.2, 0),
+        Style = "HUD"
+    })
+    
+    -- Title
+    UIManager:AddTextLabel({
+        Parent = testWindow,
+        Name = "Title",
+        Text = "🎨 UI COMPONENTS TEST",
+        Size = UDim2.new(1, 0, 0.1, 0),
+        Position = UDim2.new(0, 0, 0, 0),
+        TextXAlignment = Enum.TextXAlignment.Center,
+        TextSize = 20
+    })
+    
+    -- TextBox Test
+    UIManager:AddTextLabel({
+        Parent = testWindow,
+        Name = "TextBoxLabel", 
+        Text = "TextBox:",
+        Size = UDim2.new(0.3, 0, 0.05, 0),
+        Position = UDim2.new(0, 0, 0.15, 0)
+    })
+    
+    local textBox = UIManager:AddTextBox({
+        Parent = testWindow,
+        Name = "TestTextBox",
+        Placeholder = "Type something...",
+        Size = UDim2.new(0.6, 0, 0.05, 0),
+        Position = UDim2.new(0.35, 0, 0.15, 0)
+    })
+    
+    -- Dropdown Test
+    UIManager:AddTextLabel({
+        Parent = testWindow,
+        Name = "DropdownLabel",
+        Text = "Dropdown:",
+        Size = UDim2.new(0.3, 0, 0.05, 0),
+        Position = UDim2.new(0, 0, 0.25, 0)
+    })
+    
+    local dropdown = UIManager:AddDropdown({
+        Parent = testWindow,
+        Name = "TestDropdown", 
+        Size = UDim2.new(0.6, 0, 0.05, 0),
+        Position = UDim2.new(0.35, 0, 0.25, 0),
+        Default = "Select option"
+    })
+    
+    -- Slider Test
+    UIManager:AddTextLabel({
+        Parent = testWindow,
+        Name = "SliderLabel",
+        Text = "Slider:",
+        Size = UDim2.new(0.3, 0, 0.05, 0),
+        Position = UDim2.new(0, 0, 0.35, 0)
+    })
+    
+    local slider = UIManager:AddSlider({
+        Parent = testWindow,
+        Name = "TestSlider",
+        Size = UDim2.new(0.6, 0, 0.08, 0),
+        Position = UDim2.new(0.35, 0, 0.35, 0),
+        Default = 50
+    })
+    
+    -- Checkbox Test  
+    UIManager:AddTextLabel({
+        Parent = testWindow,
+        Name = "CheckboxLabel",
+        Text = "Checkbox:",
+        Size = UDim2.new(0.3, 0, 0.05, 0),
+        Position = UDim2.new(0, 0, 0.48, 0)
+    })
+    
+    local checkbox = UIManager:AddCheckbox({
+        Parent = testWindow,
+        Name = "TestCheckbox",
+        Size = UDim2.new(0.6, 0, 0.05, 0),
+        Position = UDim2.new(0.35, 0, 0.48, 0),
+        Text = "Enable feature",
+        Checked = true
+    })
+    
+    -- Test Button
+    local testBtn = UIManager:AddButton({
+        Parent = testWindow,
+        Name = "TestComponentsBtn",
+        Text = "🧪 TEST COMPONENTS",
+        Size = UDim2.new(0.8, 0, 0.08, 0),
+        Position = UDim2.new(0.1, 0, 0.6, 0)
+    })
+    
+    testBtn.MouseButton1Click:Connect(function()
+        UIManager:ShowToastNotification("🎯 Components Tested Successfully!", 2)
+    end)
+    
+    -- Status
+    UIManager:AddTextLabel({
+        Parent = testWindow,
+        Name = "StatusLabel",
+        Text = "✅ All new components ready!",
+        Size = UDim2.new(1, 0, 0.1, 0),
+        Position = UDim2.new(0, 0, 0.8, 0),
+        TextXAlignment = Enum.TextXAlignment.Center,
+        TextColor3 = Color3.fromRGB(0, 255, 0)
+    })
+end
+
+function DevUITester:HideComponentsTest()
+    local screen = UIManager:CreateScreen("DevToolsUI")
+    if screen:FindFirstChild("ComponentsTestWindow") then
+        screen.ComponentsTestWindow:Destroy()
+    end
+end
+
+return DevUITester
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Client/Services/UIManager.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Events = ReplicatedStorage:WaitForChild("OVHL_Events")
+local TweenService = game:GetService("TweenService")
+local UIManager = {}
+local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+local activeTheme: any
+local screens = {}
+
+function UIManager:Init() 
+    local getThemeFunc:RemoteFunction=Events:WaitForChild("GetActiveTheme",10) 
+    if getThemeFunc then 
+        activeTheme=getThemeFunc:InvokeServer() 
+    end 
+end
+
+function UIManager:CreateScreen(sn) 
+    if screens[sn] then return screens[sn] end 
+    local sg=Instance.new("ScreenGui") 
+    sg.Name=sn 
+    sg.ResetOnSpawn=false 
+    sg.Parent=playerGui 
+    screens[sn]=sg 
+    return sg 
+end
+
+function UIManager:CreateWindow(o) 
+    local f=Instance.new("Frame")
+    f.Name=o.Name 
+    f.Size=o.Size 
+    f.Position=o.Position 
+    f.AnchorPoint=o.AnchorPoint or Vector2.new(0,0) 
+    f.BorderSizePixel=0 
+    if o.Style=="HUD" then 
+        f.BackgroundColor3=activeTheme.Colors.BackgroundHUD 
+    else 
+        f.BackgroundColor3=activeTheme.Colors.Background 
+    end
+    f.BackgroundTransparency=0.2 
+    local c=Instance.new("UICorner")
+    c.CornerRadius=UDim.new(0,8) 
+    c.Parent=f 
+    f.Parent=o.Parent 
+    return f 
+end
+
+function UIManager:AddTextLabel(o) 
+    local l=Instance.new("TextLabel")
+    l.Name=o.Name 
+    l.Text=o.Text 
+    l.Size=o.Size 
+    l.Position=o.Position or UDim2.fromScale(0,0) 
+    l.AnchorPoint=o.AnchorPoint or Vector2.new(0,0) 
+    l.TextXAlignment=o.TextXAlignment or Enum.TextXAlignment.Left 
+    l.BackgroundTransparency=1 
+    if o.Style=="HUD" then 
+        l.Font=activeTheme.Fonts.Header 
+        l.TextSize=activeTheme.FontSizes.HUD 
+    else 
+        l.Font=activeTheme.Fonts.Body 
+        l.TextSize=o.TextSize or activeTheme.FontSizes.Body 
+    end
+    l.TextColor3=activeTheme.Colors.TextPrimary 
+    l.Parent=o.Parent 
+    return l 
+end
+
+function UIManager:AddButton(o) 
+    local b=Instance.new("TextButton")
+    b.Name=o.Name 
+    b.Text=o.Text 
+    b.Size=o.Size 
+    b.Position=o.Position 
+    b.AnchorPoint=o.AnchorPoint or Vector2.new(0,0) 
+    if o.Name=="AcceptButton" then 
+        b.BackgroundColor3=activeTheme.Colors.Confirm 
+    elseif o.Name=="DeclineButton" then 
+        b.BackgroundColor3=activeTheme.Colors.Decline 
+    else 
+        b.BackgroundColor3=activeTheme.Colors.Accent 
+    end
+    b.Font=activeTheme.Fonts.Body 
+    b.TextColor3=activeTheme.Colors.TextPrimary 
+    b.TextSize=activeTheme.FontSizes.Button 
+    local c=Instance.new("UICorner")
+    c.CornerRadius=UDim.new(0,6) 
+    c.Parent=b 
+    b.Parent=o.Parent 
+    return b 
+end
+
+-- NEW COMPONENTS FOR ADMIN PANEL
+function UIManager:AddTextBox(o)
+    local tb = Instance.new("TextBox")
+    tb.Name = o.Name
+    tb.PlaceholderText = o.Placeholder or ""
+    tb.Text = o.Text or ""
+    tb.Size = o.Size
+    tb.Position = o.Position
+    tb.AnchorPoint = o.AnchorPoint or Vector2.new(0,0)
+    tb.BackgroundColor3 = activeTheme.Colors.Surface
+    tb.TextColor3 = activeTheme.Colors.TextPrimary
+    tb.Font = activeTheme.Fonts.Body
+    tb.TextSize = o.TextSize or activeTheme.FontSizes.Body
+    tb.ClearTextOnFocus = false
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0,4)
+    corner.Parent = tb
+    
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0,8)
+    padding.PaddingRight = UDim.new(0,8)
+    padding.Parent = tb
+    
+    tb.Parent = o.Parent
+    return tb
+end
+
+function UIManager:AddDropdown(o)
+    local container = Instance.new("Frame")
+    container.Name = o.Name
+    container.Size = o.Size
+    container.Position = o.Position
+    container.AnchorPoint = o.AnchorPoint or Vector2.new(0,0)
+    container.BackgroundColor3 = activeTheme.Colors.Surface
+    container.BackgroundTransparency = 1
+    
+    local button = Instance.new("TextButton")
+    button.Name = "DropdownButton"
+    button.Size = UDim2.fromScale(1, 1)
+    button.Position = UDim2.fromScale(0, 0)
+    button.BackgroundColor3 = activeTheme.Colors.Surface
+    button.TextColor3 = activeTheme.Colors.TextPrimary
+    button.Font = activeTheme.Fonts.Body
+    button.TextSize = activeTheme.FontSizes.Body
+    button.Text = o.Default or "Select..."
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0,4)
+    corner.Parent = button
+    
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0,8)
+    padding.PaddingRight = UDim.new(0,8)
+    padding.Parent = button
+    
+    button.Parent = container
+    container.Parent = o.Parent
+    
+    return container
+end
+
+function UIManager:AddSlider(o)
+    local container = Instance.new("Frame")
+    container.Name = o.Name
+    container.Size = o.Size
+    container.Position = o.Position
+    container.AnchorPoint = o.AnchorPoint or Vector2.new(0,0)
+    container.BackgroundTransparency = 1
+    
+    local track = Instance.new("Frame")
+    track.Name = "Track"
+    track.Size = UDim2.new(1, 0, 0.3, 0)
+    track.Position = UDim2.new(0, 0, 0.5, 0)
+    track.AnchorPoint = Vector2.new(0, 0.5)
+    track.BackgroundColor3 = activeTheme.Colors.Surface
+    track.BorderSizePixel = 0
+    
+    local fill = Instance.new("Frame")
+    fill.Name = "Fill"
+    fill.Size = UDim2.new(0.5, 0, 1, 0)
+    fill.Position = UDim2.new(0, 0, 0, 0)
+    fill.BackgroundColor3 = activeTheme.Colors.Primary
+    fill.BorderSizePixel = 0
+    
+    local thumb = Instance.new("Frame")
+    thumb.Name = "Thumb"
+    thumb.Size = UDim2.new(0, 20, 1.5, 0)
+    thumb.Position = UDim2.new(0.5, -10, 0.5, 0)
+    thumb.AnchorPoint = Vector2.new(0, 0.5)
+    thumb.BackgroundColor3 = activeTheme.Colors.Accent
+    thumb.BorderSizePixel = 0
+    
+    local cornerTrack = Instance.new("UICorner")
+    cornerTrack.CornerRadius = UDim.new(0,4)
+    cornerTrack.Parent = track
+    
+    local cornerFill = Instance.new("UICorner")
+    cornerFill.CornerRadius = UDim.new(0,4)
+    cornerFill.Parent = fill
+    
+    local cornerThumb = Instance.new("UICorner")
+    cornerThumb.CornerRadius = UDim.new(1,0)
+    cornerThumb.Parent = thumb
+    
+    fill.Parent = track
+    thumb.Parent = track
+    track.Parent = container
+    
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Name = "ValueLabel"
+    valueLabel.Size = UDim2.new(1, 0, 0.4, 0)
+    valueLabel.Position = UDim2.new(0, 0, 0, 0)
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.TextColor3 = activeTheme.Colors.TextSecondary
+    valueLabel.Font = activeTheme.Fonts.Body
+    valueLabel.TextSize = activeTheme.FontSizes.Body - 2
+    valueLabel.Text = tostring(o.Default or 0)
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Center
+    valueLabel.Parent = container
+    
+    container.Parent = o.Parent
+    return container
+end
+
+function UIManager:AddCheckbox(o)
+    local container = Instance.new("Frame")
+    container.Name = o.Name
+    container.Size = o.Size
+    container.Position = o.Position
+    container.AnchorPoint = o.AnchorPoint or Vector2.new(0,0)
+    container.BackgroundTransparency = 1
+    
+    local box = Instance.new("Frame")
+    box.Name = "Checkbox"
+    box.Size = UDim2.new(0, 20, 0, 20)
+    box.Position = UDim2.new(0, 0, 0.5, 0)
+    box.AnchorPoint = Vector2.new(0, 0.5)
+    box.BackgroundColor3 = activeTheme.Colors.Surface
+    box.BorderSizePixel = 0
+    
+    local check = Instance.new("ImageLabel")
+    check.Name = "Check"
+    check.Size = UDim2.new(0.7, 0, 0.7, 0)
+    check.Position = UDim2.new(0.5, 0, 0.5, 0)
+    check.AnchorPoint = Vector2.new(0.5, 0.5)
+    check.BackgroundTransparency = 1
+    check.Image = "rbxassetid://10734948227" -- Check icon
+    check.Visible = o.Checked or false
+    
+    local label = Instance.new("TextLabel")
+    label.Name = "Label"
+    label.Size = UDim2.new(1, -30, 1, 0)
+    label.Position = UDim2.new(0, 25, 0, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = activeTheme.Colors.TextPrimary
+    label.Font = activeTheme.Fonts.Body
+    label.TextSize = activeTheme.FontSizes.Body
+    label.Text = o.Text or ""
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0,4)
+    corner.Parent = box
+    
+    check.Parent = box
+    box.Parent = container
+    label.Parent = container
+    container.Parent = o.Parent
+    
+    return container
+end
+
+function UIManager:CreateMissionTracker(orderData) 
+    local s=self:CreateScreen("MissionUI") 
+    if s:FindFirstChild("MissionTracker") then s.MissionTracker:Destroy() end 
+    local tW=self:CreateWindow({Parent=s,Name="MissionTracker",Size=UDim2.new(0.25,0,0.1,0),Position=UDim2.new(0.5,0,0.9,0),AnchorPoint=Vector2.new(0.5,1)}) 
+    self:AddTextLabel({Parent=tW,Name="ObjectiveLabel",Text="Tujuan: "..orderData.to,Size=UDim2.fromScale(0.9,0.8),Position=UDim2.fromScale(0.5,0.5),AnchorPoint=Vector2.new(0.5,0.5),TextXAlignment=Enum.TextXAlignment.Center,TextSize=18}) 
+end
+
+function UIManager:DestroyMissionTracker() 
+    local s=screens["MissionUI"] 
+    if s and s:FindFirstChild("MissionTracker") then s.MissionTracker:Destroy() end 
+end
+
+function UIManager:ShowToastNotification(message: string, duration: number?)
+    local screen = self:CreateScreen("NotificationUI")
+    local toast = self:CreateWindow({
+        Parent = screen,
+        Name = "ToastNotification",
+        Size = UDim2.new(0.3, 0, 0.1, 0),
+        Position = UDim2.new(0.5, 0, -0.1, 0),
+        AnchorPoint = Vector2.new(0.5, 0),
+        Style = "HUD",
+    })
+    self:AddTextLabel({
+        Parent = toast,
+        Name = "ToastLabel",
+        Text = message,
+        Size = UDim2.fromScale(1, 1),
+        TextXAlignment = Enum.TextXAlignment.Center,
+        Style = "HUD",
+    })
+    
+    local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+    local goalIn = {Position = UDim2.new(0.5, 0, 0.05, 0)}
+    local goalOut = {Position = UDim2.new(0.5, 0, -0.1, 0)}
+    
+    TweenService:Create(toast, tweenInfo, goalIn):Play()
+    task.wait(duration or 3)
+    TweenService:Create(toast, tweenInfo, goalOut):Play()
+    task.wait(0.5)
+    toast:Destroy()
+end
+
+return UIManager
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Client/UI/MainHUD.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+--[[
+	@file MainHUD.lua
+	@version 2.1.0
+	@description Kini mendengarkan sinyal update data dan memperbarui UI.
+]]
+local Core = game:GetService("ReplicatedStorage"):WaitForChild("Core")
+local PlayerDataController = require(Core.Client.Controllers.PlayerDataController)
+local MainHUD = {}
+local moneyLabel: TextLabel
+
+function MainHUD:Init(dependencies: {UIManager: any})
+	local UIManager = dependencies.UIManager
+	
+	-- Buat UI saat data pertama kali siap
+	PlayerDataController.OnDataReady:Connect(function(playerData)
+		local screen = UIManager:CreateScreen("MainHUD")
+		if screen:FindFirstChild("MoneyWindow") then screen.MoneyWindow:Destroy() end
+		local moneyWindow = UIManager:CreateWindow({ Parent = screen, Name = "MoneyWindow", Style = "HUD", Size = UDim2.new(0.2, 0, 0.08, 0), Position = UDim2.new(0.5, 0, 0.02, 0), AnchorPoint = Vector2.new(0.5, 0) })
+		moneyLabel = UIManager:AddTextLabel({ Parent = moneyWindow, Name = "MoneyLabel", Style = "HUD", Text = "Rp. " .. tostring(playerData.Uang), Size = UDim2.fromScale(0.9, 0.8), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5), TextXAlignment = Enum.TextXAlignment.Center })
+	end)
+
+	-- Dengarkan update data berkelanjutan
+	PlayerDataController.OnDataUpdated:Connect(function(playerData)
+		if moneyLabel then
+			moneyLabel.Text = "Rp. " .. tostring(playerData.Uang)
+		end
+	end)
+end
+
+return MainHUD
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Kernel/Bootstrapper.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Core = ReplicatedStorage.Core
+local Services = Core.Server.Services
+local ServiceManager = require(Services.ServiceManager)
+local SystemMonitor = require(Services.SystemMonitor)
+local Bootstrapper = {}
+Bootstrapper.CoreServices = { "EventService", "DataService", "StyleService", "ZoneService" }
+Bootstrapper.ModulesPath = Core.Server.Modules
+
+function Bootstrapper:Start()
+    local startTime = os.clock()
+    SystemMonitor:Log("Bootstrapper", "INFO", "CORE_BOOT_START", "OVHL Core OS memulai proses booting...")
+    local serviceManager = ServiceManager.new()
+    SystemMonitor:Initialize(serviceManager)
+    serviceManager:Register("ServiceManager", serviceManager)
+    serviceManager:Register("SystemMonitor", SystemMonitor)
+    self:_LoadCoreServices(serviceManager)
+    self:_DiscoverAndLoadModules(serviceManager)
+    serviceManager:StartAll()
+    local bootTime = (os.clock() - startTime) * 1000
+    SystemMonitor:Log("Bootstrapper", "INFO", "CORE_BOOT_SUCCESS", ("OVHL Core OS berhasil dimuat dalam %.2f ms."):format(bootTime))
+end
+
+function Bootstrapper:_LoadCoreServices(serviceManager: any)
+    SystemMonitor:Log("Bootstrapper", "INFO", "CORE_SERVICE_LOAD", "Memuat Core Services...")
+    for _, serviceName in ipairs(self.CoreServices) do
+        local serviceModule = Services:FindFirstChild(serviceName)
+        if serviceModule and serviceModule:IsA("ModuleScript") then
+            local status, serviceInstance = pcall(function() return require(serviceModule).new(serviceManager) end)
+            if status and serviceInstance then
+                serviceManager:Register(serviceName, serviceInstance)
+                SystemMonitor:Log("Bootstrapper", "INFO", "REGISTER_SUCCESS", ("Service '%s' berhasil dimuat."):format(serviceName))
+                
+                -- Init service immediately
+                if typeof(serviceInstance.Init) == "function" then
+                    pcall(serviceInstance.Init, serviceInstance)
+                end
+            else
+                SystemMonitor:Log("Bootstrapper", "ERROR", "REGISTER_FAIL", ("Gagal menginisialisasi Core Service '%s'. Pesan: %s"):format(serviceName, tostring(serviceInstance)))
+            end
+        else
+            SystemMonitor:Log("Bootstrapper", "ERROR", "SERVICE_NOT_FOUND", ("Core Service '%s' tidak ditemukan."):format(serviceName))
+        end
+    end
+end
+
+function Bootstrapper:_DiscoverAndLoadModules(serviceManager: any)
+    SystemMonitor:Log("Bootstrapper", "INFO", "MODULE_DISCOVERY", "Memulai penemuan modul...")
+    
+    -- DEBUG: List semua modules yang ada
+    for _, moduleFolder in ipairs(self.ModulesPath:GetChildren()) do
+        if moduleFolder:IsA("Folder") then
+            SystemMonitor:Log("Bootstrapper", "DEBUG", "MODULE_FOUND", ("Folder modul ditemukan: %s"):format(moduleFolder.Name))
+        end
+    end
+    
+    -- Load AdminPanel module FIRST dengan debug
+    local adminPanelFolder = self.ModulesPath:FindFirstChild("AdminPanel")
+    if adminPanelFolder and adminPanelFolder:IsA("Folder") then
+        SystemMonitor:Log("Bootstrapper", "DEBUG", "ADMINPANEL_FOUND", "AdminPanel folder ditemukan!")
+        
+        local manifestModule = adminPanelFolder:FindFirstChild("manifest")
+        if manifestModule and manifestModule:IsA("ModuleScript") then
+            SystemMonitor:Log("Bootstrapper", "DEBUG", "MANIFEST_FOUND", "AdminPanel manifest ditemukan!")
+            
+            local status, manifest = pcall(require, manifestModule)
+            if status and typeof(manifest) == "table" then
+                SystemMonitor:Log("Bootstrapper", "DEBUG", "MANIFEST_LOADED", ("AdminPanel manifest loaded: %s"):format(manifest.name))
+                
+                local handlerModule = adminPanelFolder:FindFirstChild("Handler")
+                if handlerModule and handlerModule:IsA("ModuleScript") then
+                    SystemMonitor:Log("Bootstrapper", "DEBUG", "HANDLER_FOUND", "AdminPanel Handler ditemukan!")
+                    
+                    serviceManager:RegisterModule(manifest, handlerModule)
+                    SystemMonitor:Log("Bootstrapper", "INFO", "MODULE_REGISTERED", ("Modul '%s' berhasil didaftarkan."):format(manifest.name))
+                else
+                    SystemMonitor:Log("Bootstrapper", "ERROR", "HANDLER_NOT_FOUND", "AdminPanel Handler tidak ditemukan!")
+                end
+            else
+                SystemMonitor:Log("Bootstrapper", "ERROR", "MANIFEST_LOAD_FAIL", ("Gagal load AdminPanel manifest: %s"):format(tostring(manifest)))
+            end
+        else
+            SystemMonitor:Log("Bootstrapper", "ERROR", "MANIFEST_NOT_FOUND", "AdminPanel manifest tidak ditemukan!")
+        end
+    else
+        SystemMonitor:Log("Bootstrapper", "ERROR", "ADMINPANEL_NOT_FOUND", "AdminPanel folder tidak ditemukan di ModulesPath!")
+    end
+    
+    -- Load other modules
+    for _, moduleFolder in ipairs(self.ModulesPath:GetChildren()) do
+        if moduleFolder:IsA("Folder") and moduleFolder.Name ~= "AdminPanel" then
+            local manifestModule = moduleFolder:FindFirstChild("manifest")
+            if manifestModule and manifestModule:IsA("ModuleScript") then
+                local status, manifest = pcall(require, manifestModule)
+                if status and typeof(manifest) == "table" then
+                    local handlerModule = moduleFolder:FindFirstChild("Handler")
+                    if handlerModule and handlerModule:IsA("ModuleScript") then
+                        serviceManager:RegisterModule(manifest, handlerModule)
+                        SystemMonitor:Log("Bootstrapper", "INFO", "MODULE_REGISTERED", ("Modul '%s' berhasil didaftarkan."):format(manifest.name))
+                    end
+                end
+            end
+        end
+    end
+end
+
+return Bootstrapper
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Server/Modules/AdminPanel/Handler.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+local AdminPanel = {}
+AdminPanel.__index = AdminPanel
+
+function AdminPanel:init(context)
+    print("🛠️ ADMINPANEL: init() dipanggil!")
+    
+    self.ServiceManager = context.ServiceManager
+    self.EventService = context.EventService  
+    self.DataService = context.DataService
+    
+    -- Gunakan SystemMonitor dari context, jangan panggil Get() lagi
+    self.SystemMonitor = context.SystemMonitor or self.ServiceManager:Get("SystemMonitor")
+    
+    self.SystemMonitor:Log("AdminPanel", "INFO", "INIT_START", "AdminPanel mulai inisialisasi...")
+    
+    -- Setup handlers immediately
+    self:SetupAdminHandlers()
+    
+    self.SystemMonitor:Log("AdminPanel", "INFO", "INIT_SUCCESS", "AdminPanel berhasil diinisialisasi")
+    print("🛠️ ADMINPANEL: init() selesai!")
+end
+
+function AdminPanel:SetupAdminHandlers()
+    self.SystemMonitor:Log("AdminPanel", "DEBUG", "SETUP_HANDLERS", "Setup admin handlers...")
+    
+    -- Handler untuk AdminGetConfig
+    if self.EventService.functions["AdminGetConfig"] then
+        self.SystemMonitor:Log("AdminPanel", "DEBUG", "SETUP_GETCONFIG", "Setup AdminGetConfig handler")
+        self.EventService.functions["AdminGetConfig"].OnServerInvoke = function(player, key)
+            self.SystemMonitor:Log("AdminPanel", "DEBUG", "GETCONFIG_CALLED", ("AdminGetConfig dipanggil oleh %s"):format(player.Name))
+            
+            if not self:IsAdmin(player) then 
+                self.SystemMonitor:Log("AdminPanel", "WARN", "GETCONFIG_UNAUTHORIZED", ("%s mencoba akses AdminGetConfig tanpa izin"):format(player.Name))
+                return nil 
+            end
+            
+            local config = self.DataService:GetGlobal("OVHL_CONFIG") or {
+                economy_multiplier = 1.0,
+                ai_population_density = 0.8
+            }
+            local result = key and config[key] or config
+            self.SystemMonitor:Log("AdminPanel", "DEBUG", "GETCONFIG_RESULT", ("AdminGetConfig mengembalikan: %s"):format(tostring(result)))
+            return result
+        end
+    else
+        self.SystemMonitor:Log("AdminPanel", "ERROR", "GETCONFIG_NOT_FOUND", "AdminGetConfig RemoteFunction tidak ditemukan!")
+    end
+    
+    -- Handler untuk AdminUpdateConfig
+    if self.EventService.functions["AdminUpdateConfig"] then
+        self.SystemMonitor:Log("AdminPanel", "DEBUG", "SETUP_UPDATECONFIG", "Setup AdminUpdateConfig handler")
+        self.EventService.functions["AdminUpdateConfig"].OnServerInvoke = function(player, updates)
+            self.SystemMonitor:Log("AdminPanel", "DEBUG", "UPDATECONFIG_CALLED", ("AdminUpdateConfig dipanggil oleh %s"):format(player.Name))
+            
+            if not self:IsAdmin(player) then 
+                self.SystemMonitor:Log("AdminPanel", "WARN", "UPDATECONFIG_UNAUTHORIZED", ("%s mencoba akses AdminUpdateConfig tanpa izin"):format(player.Name))
+                return false 
+            end
+            
+            local config = self.DataService:GetGlobal("OVHL_CONFIG") or {}
+            for key, value in pairs(updates) do
+                config[key] = value
+            end
+            
+            self.DataService:SetGlobal("OVHL_CONFIG", config)
+            
+            self.SystemMonitor:Log("AdminPanel", "INFO", "CONFIG_UPDATED", 
+                ("Admin '%s' mengupdate config: %s"):format(player.Name, game:GetService("HttpService"):JSONEncode(updates)))
+            
+            return true
+        end
+    else
+        self.SystemMonitor:Log("AdminPanel", "ERROR", "UPDATECONFIG_NOT_FOUND", "AdminUpdateConfig RemoteFunction tidak ditemukan!")
+    end
+    
+    -- Handler untuk AdminReloadModule
+    if self.EventService.functions["AdminReloadModule"] then
+        self.SystemMonitor:Log("AdminPanel", "DEBUG", "SETUP_RELOADMODULE", "Setup AdminReloadModule handler")
+        self.EventService.functions["AdminReloadModule"].OnServerInvoke = function(player, moduleName)
+            self.SystemMonitor:Log("AdminPanel", "DEBUG", "RELOADMODULE_CALLED", ("AdminReloadModule dipanggil oleh %s untuk module %s"):format(player.Name, moduleName))
+            
+            if not self:IsAdmin(player) then 
+                self.SystemMonitor:Log("AdminPanel", "WARN", "RELOADMODULE_UNAUTHORIZED", ("%s mencoba akses AdminReloadModule tanpa izin"):format(player.Name))
+                return false 
+            end
+            
+            self.SystemMonitor:Log("AdminPanel", "INFO", "MODULE_RELOAD_REQUEST", 
+                ("Admin '%s' meminta reload module '%s'"):format(player.Name, moduleName))
+            
+            return true
+        end
+    else
+        self.SystemMonitor:Log("AdminPanel", "ERROR", "RELOADMODULE_NOT_FOUND", "AdminReloadModule RemoteFunction tidak ditemukan!")
+    end
+    
+    self.SystemMonitor:Log("AdminPanel", "INFO", "HANDLERS_SETUP", "Semua admin handlers berhasil di-setup")
+end
+
+function AdminPanel:IsAdmin(player)
+    -- Untuk testing, return true dulu
+    return true
+end
+
+function AdminPanel:teardown()
+    self.SystemMonitor:Log("AdminPanel", "INFO", "TEARDOWN", "AdminPanel di-shutdown")
+end
+
+return AdminPanel
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Server/Modules/AdminPanel/manifest.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+return {
+    name = "AdminPanel",
+    version = "1.0.0",
+    depends = {"DataService", "EventService", "ServiceManager"},
+    entry = "Source/Core/Server/Modules/AdminPanel/Handler.lua",
+    schema = {
+        enabled = {type = "boolean", default = true},
+        admin_whitelist = {type = "table", default = {}}
+    }
+}
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Server/Modules/DevUITester/Handler.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+local DevUITester = {}
+
+function DevUITester:init(context)
+    self.ServiceManager = context.ServiceManager
+    self.EventService = context.EventService
+    print("🎨 DevUITester initialized - Ready for UI testing")
+end
+
+function DevUITester:teardown()
+    print("🎨 DevUITester shutdown")
+end
+
+return DevUITester
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Server/Modules/DevUITester/manifest.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+return {
+    name = "DevUITester",
+    version = "1.0.0", 
+    depends = {"EventService"},
+    entry = "Source/Core/Server/Modules/DevUITester/Handler.lua",
+    schema = {
+        enabled = {type = "boolean", default = true}
+    }
+}
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Server/Modules/TestOrder/Handler.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+local TestOrderHandler = {}
+local activeOrders = {}
+
+function TestOrderHandler:init(context)
+    local SystemMonitor = context.SystemMonitor or context.ServiceManager:Get("SystemMonitor")
+    local EventService = context.EventService
+    local ZoneService = context.ZoneService  
+    local DataService = context.DataService
+    
+    SystemMonitor:Log("TestOrder", "INFO", "MODULE_START", "TestOrder module dimulai")
+    
+    local function onMissionCompleted(player: Player)
+        local orderData = activeOrders[player]
+        if not orderData then return end
+        DataService:AddUang(player, orderData.payment)
+        EventService:FireClient(player, "MissionCompleted", orderData.payment)
+        activeOrders[player] = nil
+        startOrderSimulationForPlayer(player)
+    end
+
+    local function onOrderResponse(player: Player, hasAccepted: boolean)
+        local orderData = activeOrders[player]
+        if not orderData then return end
+        if hasAccepted then
+            EventService:FireClient(player, "UpdateMissionUI", orderData)
+            ZoneService:CreateZoneForPlayer(player, orderData.destination, function() onMissionCompleted(player) end)
+        else
+            activeOrders[player] = nil
+        end
+    end
+
+    function startOrderSimulationForPlayer(player: Player)
+        task.spawn(function()
+            task.wait(8)
+            if not player or not player.Parent or activeOrders[player] then return end
+            local char=player.Character
+            local root=char and char:FindFirstChild("HumanoidRootPart")
+            local sPos=root and root.Position or Vector3.new(0,5,0)
+            local dPos=sPos+Vector3.new(math.random(30,60),0,math.random(30,60))
+            local oData={id="ORDER-"..math.random(1000,9999),from="Restoran Cepat Saji",to="Perumahan Mekar Jaya",payment=15000,destination=dPos}
+            activeOrders[player]=oData
+            EventService:FireClient(player,"NewOrderNotification",oData)
+        end)
+    end
+
+    for _, p in ipairs(Players:GetPlayers()) do startOrderSimulationForPlayer(p) end
+    Players.PlayerAdded:Connect(startOrderSimulationForPlayer)
+    EventService:OnClientEvent("RespondToOrder",onOrderResponse)
+end
+
+function TestOrderHandler:teardown()
+    print("TestOrder module di-shutdown")
+end
+
+return TestOrderHandler
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Server/Modules/TestOrder/manifest.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+--[[
+	Manifest untuk Modul TestOrder
+]]
+return {
+	name = "TestOrder",
+	version = "0.1.0",
+	description = "Modul sederhana untuk testing Core OS.",
+	
+	-- Daftar service yang dibutuhkan oleh modul ini
+	depends = {
+		"SystemMonitor",
+		"EventService",
+	},
+}
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Server/Services/DataService.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+local DataStoreService = game:GetService("DataStoreService")
+local Players = game:GetService("Players")
+local Core = game:GetService("ReplicatedStorage"):WaitForChild("Core")
+local Config = require(Core.Shared.Config)
+local DataService = {}
+DataService.__index = DataService
+local ProfileTemplate = { Uang = 5000, Level = 1, XP = 0 }
+local function deepCopy(t: table) local nt = {} for k, v in pairs(t) do nt[k] = (typeof(v) == "table") and deepCopy(v) or v end return nt end
+
+function DataService.new(sm: any)
+    local self = setmetatable({}, DataService)
+    self.sm = sm
+    self.SystemMonitor = sm:Get("SystemMonitor")
+    self.playerDataStore = DataStoreService:GetDataStore("OVHL_PlayerData_v1")
+    self.globalDataStore = DataStoreService:GetDataStore("OVHL_GlobalData_v1")
+    self.playerDataCache = {}
+    self.globalDataCache = {}
+    return self
+end
+
+function DataService:Init()
+    Players.PlayerAdded:Connect(function(p) self:_onPlayerAdded(p) end)
+    Players.PlayerRemoving:Connect(function(p) self:_onPlayerRemoving(p) end)
+    game:BindToClose(function() self:_onServerShutdown() end)
+    task.spawn(function() self:_autoSaveLoop() end)
+    self.SystemMonitor:Log("DataService", "INFO", "INIT_SUCCESS", "DataService berhasil diinisialisasi.")
+end
+
+function DataService:GetData(player: Player) return self.playerDataCache[player] end
+
+function DataService:AddUang(player: Player, amount: number)
+    local data = self:GetData(player)
+    if data and typeof(data.Uang) == "number" then
+        data.Uang += amount
+        self.SystemMonitor:Log("DataService", "INFO", "DATA_UPDATED", ("Uang pemain '%s' +%d. Total: %d"):format(player.Name, amount, data.Uang))
+        
+        -- Kirim update ke client
+        local EventService = self.sm:Get("EventService")
+        if EventService then
+            EventService:FireClient(player, "UpdatePlayerData", {Uang = data.Uang})
+        end
+    end
+end
+
+-- NEW METHODS FOR GLOBAL CONFIG
+function DataService:GetGlobal(key: string?)
+    if not self.globalDataCache then
+        self.globalDataCache = {}
+    end
+    
+    if key then
+        return self.globalDataCache[key]
+    else
+        return self.globalDataCache
+    end
+end
+
+function DataService:SetGlobal(key: string, value: any)
+    if not self.globalDataCache then
+        self.globalDataCache = {}
+    end
+    
+    self.globalDataCache[key] = value
+    
+    -- Save to DataStore async
+    task.spawn(function()
+        local success, err = pcall(function()
+            self.globalDataStore:SetAsync("OVHL_CONFIG", self.globalDataCache)
+        end)
+        
+        if not success then
+            self.SystemMonitor:Log("DataService", "ERROR", "GLOBAL_SAVE_FAIL", ("Gagal menyimpan config global: %s"):format(tostring(err)))
+        end
+    end)
+end
+
+function DataService:_onPlayerAdded(player: Player) self:_loadPlayerData(player) end
+function DataService:_onPlayerRemoving(player: Player) self:_savePlayerData(player) self.playerDataCache[player] = nil end
+
+function DataService:_loadPlayerData(player: Player)
+    local userId = "Player_" .. player.UserId
+    local success, data = pcall(function() return self.playerDataStore:GetAsync(userId) end)
+    if success then
+        self.playerDataCache[player] = data or deepCopy(ProfileTemplate)
+        task.wait(1)
+        local EventService = self.sm:Get("EventService")
+        if EventService then EventService:FireClient(player, "PlayerDataReady") end
+    else
+        player:Kick("Gagal memuat data Anda.")
+    end
+end
+
+function DataService:_savePlayerData(player: Player) if not self.playerDataCache[player] then return end pcall(function() self.playerDataStore:SetAsync("Player_" .. player.UserId, self.playerDataCache[player]) end) end
+function DataService:_autoSaveLoop() while true do task.wait(Config.autosave_interval) for _, player in ipairs(Players:GetPlayers()) do self:_savePlayerData(player) end end end
+function DataService:_onServerShutdown() for _, player in ipairs(Players:GetPlayers()) do self:_savePlayerData(player) end task.wait(2) end
+
+return DataService
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Server/Services/EventService.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local EventService = {}
+EventService.__index = EventService
+
+function EventService.new(sm: any)
+    local self = setmetatable({}, EventService)
+    self.sm = sm
+    self.SystemMonitor = sm:Get("SystemMonitor")
+    self.container = Instance.new("Folder")
+    self.container.Name = "OVHL_Events"
+    self.container.Parent = ReplicatedStorage
+    self.events = {}
+    self.functions = {}
+    return self
+end
+
+function EventService:Init()
+    self:CreateFunction("RequestPlayerData", function(player: Player)
+        local DataService = self.sm:Get("DataService")
+        if DataService then return DataService:GetData(player) end
+        return nil
+    end)
+    
+    -- Existing events
+    self:CreateEvent("PlayerDataReady")
+    self:CreateEvent("NewOrderNotification")
+    self:CreateEvent("RespondToOrder")
+    self:CreateEvent("UpdateMissionUI")
+    self:CreateEvent("MissionCompleted")
+    self:CreateEvent("UpdatePlayerData")
+    
+    -- NEW ADMIN EVENTS
+    self:CreateFunction("AdminGetConfig")
+    self:CreateFunction("AdminUpdateConfig") 
+    self:CreateFunction("AdminReloadModule")
+    self:CreateEvent("ConfigUpdated")
+    
+    self.SystemMonitor:Log("EventService", "INFO", "INIT_SUCCESS", "EventService dimulai.")
+end
+
+function EventService:CreateFunction(name: string, callback: (Player, ...any) -> ...any) 
+    if self.functions[name] then return end 
+    local rf = Instance.new("RemoteFunction") 
+    rf.Name = name 
+    rf.Parent = self.container 
+    if callback then
+        rf.OnServerInvoke = callback
+    else
+        -- Default handler untuk admin functions
+        rf.OnServerInvoke = function(player, ...)
+            self.SystemMonitor:Log("EventService", "WARN", "NO_HANDLER", ("RemoteFunction '%s' dipanggil tapi belum ada handler"):format(name))
+            return nil
+        end
+    end
+    self.functions[name] = rf 
+end
+
+function EventService:CreateEvent(name: string) 
+    if self.events[name] then return end 
+    local re = Instance.new("RemoteEvent") 
+    re.Name = name 
+    re.Parent = self.container 
+    self.events[name] = re 
+end
+
+function EventService:FireClient(player: Player, name: string, ...: any) 
+    local remoteEvent = self.events[name] 
+    if remoteEvent then 
+        remoteEvent:FireClient(player, ...) 
+    end 
+end
+
+function EventService:OnClientEvent(name: string, callback: (Player, ...any) -> ()) 
+    local remoteEvent = self.events[name] 
+    if remoteEvent then 
+        remoteEvent.OnServerEvent:Connect(callback) 
+    end 
+end
+
+function EventService:FireAllClients(name: string, ...: any)
+    local remoteEvent = self.events[name]
+    if remoteEvent then
+        remoteEvent:FireAllClients(...)
+    end
+end
+
+return EventService
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Server/Services/ServiceManager.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+local ServiceManager = {}
+ServiceManager.__index = ServiceManager
+
+function ServiceManager.new()
+    local self = setmetatable({}, ServiceManager)
+    self.services = {}
+    self.modules = {}
+    self.SystemMonitor = nil
+    return self
+end
+
+function ServiceManager:Register(name: string, instance: any)
+    if self.services[name] then
+        self:Get("SystemMonitor"):Log("ServiceManager", "WARN", "DUPLICATE_REGISTER", ("Service dengan nama '%s' sudah terdaftar. Registrasi baru diabaikan."):format(name))
+        return
+    end
+    self.services[name] = instance
+end
+
+function ServiceManager:RegisterModule(manifest: table, handlerModule: ModuleScript)
+    if self.modules[manifest.name] then
+        self:Get("SystemMonitor"):Log("ServiceManager", "WARN", "DUPLICATE_MODULE", ("Modul dengan nama '%s' sudah terdaftar. Registrasi baru diabaikan."):format(manifest.name))
+        return
+    end
+
+    local moduleInstance = {
+        manifest = manifest,
+        handler = require(handlerModule),
+        isStarted = false,
+    }
+    self.modules[manifest.name] = moduleInstance
+    
+    self:Get("SystemMonitor"):Log("ServiceManager", "DEBUG", "MODULE_REGISTERED", ("Modul '%s' terdaftar, handler type: %s"):format(manifest.name, typeof(moduleInstance.handler)))
+end
+
+function ServiceManager:Get(name: string)
+    local service = self.services[name]
+    if not service then
+        warn(("[ServiceManager] Peringatan: Service '%s' tidak ditemukan atau belum dimuat."):format(name))
+    end
+    return service
+end
+
+function ServiceManager:StartAll()
+    local SystemMonitor = self:Get("SystemMonitor")
+    SystemMonitor:Log("ServiceManager", "INFO", "START_ALL", "Memulai semua service dan modul...")
+
+    -- Pertama, jalankan Init() pada semua service
+    for name, service in pairs(self.services) do
+        if typeof(service.Init) == "function" then
+            local status, err = pcall(service.Init, service)
+            if not status then
+                SystemMonitor:Log("ServiceManager", "ERROR", "SERVICE_INIT_FAIL", ("Gagal menjalankan Init() pada service '%s'. Pesan: %s"):format(name, err))
+            else
+                SystemMonitor:Log("ServiceManager", "DEBUG", "SERVICE_INIT_SUCCESS", ("Service '%s' berhasil di-init"):format(name))
+            end
+        end
+    end
+
+    -- Kedua, jalankan Init() pada semua modul yang dependensinya terpenuhi
+    for name, module in pairs(self.modules) do
+        SystemMonitor:Log("ServiceManager", "DEBUG", "MODULE_START_ATTEMPT", ("Mencoba memulai modul '%s'"):format(name))
+        
+        if typeof(module.handler.init) == "function" then
+            -- Cek dependency
+            local canStart = true
+            if module.manifest.depends then
+                for _, depName in ipairs(module.manifest.depends) do
+                    if not self.services[depName] then
+                        SystemMonitor:Log("ServiceManager", "ERROR", "MODULE_DEP_MISSING", ("Gagal memulai modul '%s' karena dependensi '%s' tidak ditemukan."):format(name, depName))
+                        canStart = false
+                        break
+                    else
+                        SystemMonitor:Log("ServiceManager", "DEBUG", "MODULE_DEP_FOUND", ("Modul '%s': dependensi '%s' tersedia"):format(name, depName))
+                    end
+                end
+            end
+            
+            if canStart then
+                SystemMonitor:Log("ServiceManager", "DEBUG", "MODULE_STARTING", ("Memulai modul '%s'..."):format(name))
+                local status, err = pcall(module.handler.init, module.handler, self)
+                if not status then
+                    SystemMonitor:Log("ServiceManager", "ERROR", "MODULE_INIT_FAIL", ("Gagal menjalankan init() pada modul '%s'. Pesan: %s"):format(name, err))
+                else
+                    module.isStarted = true
+                    SystemMonitor:Log("ServiceManager", "INFO", "MODULE_START_SUCCESS", ("Modul '%s' berhasil dimulai"):format(name))
+                end
+            end
+        else
+            SystemMonitor:Log("ServiceManager", "ERROR", "MODULE_NO_INIT", ("Modul '%s' tidak memiliki function init()"):format(name))
+        end
+    end
+
+    SystemMonitor:Log("ServiceManager", "INFO", "START_ALL_COMPLETE", "Proses startup semua komponen selesai.")
+end
+
+return ServiceManager
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Server/Services/StyleService.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+local StyleService = {}
+StyleService.__index = StyleService
+
+function StyleService.new(sm: any)
+    local self = setmetatable({}, StyleService)
+    self.sm = sm
+    self.SystemMonitor = sm:Get("SystemMonitor")
+    self.themes = {}
+    self.activeThemeName = "Default"
+    self:_LoadThemes()
+    return self
+end
+
+function StyleService:Init()
+    task.defer(function()
+        local EventService = self.sm:Get("EventService")
+        if EventService then
+            EventService:CreateFunction("GetActiveTheme", function(player: Player)
+                return self:GetTheme(self.activeThemeName)
+            end)
+        end
+    end)
+    self.SystemMonitor:Log("StyleService", "INFO", "INIT_SUCCESS", "StyleService dimulai.")
+end
+
+function StyleService:GetTheme(name: string)
+    return self.themes[name]
+end
+
+function StyleService:_LoadThemes()
+    self.themes["Default"] = {
+        Name = "Default",
+        Colors = {
+            -- Core colors
+            Background = Color3.fromRGB(25, 25, 25),
+            BackgroundHUD = Color3.fromRGB(10, 10, 10),
+            TextPrimary = Color3.fromRGB(250, 250, 250),
+            TextSecondary = Color3.fromRGB(180, 180, 180),
+            Accent = Color3.fromRGB(50, 150, 255),
+            Confirm = Color3.fromRGB(76, 175, 80),
+            Decline = Color3.fromRGB(244, 67, 54),
+            
+            -- NEW COLORS FOR ADMIN PANEL & COMPONENTS
+            Surface = Color3.fromRGB(45, 45, 45),
+            Border = Color3.fromRGB(60, 60, 60),
+            Success = Color3.fromRGB(76, 175, 80),
+            Warning = Color3.fromRGB(255, 193, 7),
+            Error = Color3.fromRGB(244, 67, 54),
+            Primary = Color3.fromRGB(0, 120, 215),
+            Secondary = Color3.fromRGB(100, 100, 100),
+        },
+        Fonts = {
+            Header = Enum.Font.GothamBold,
+            Body = Enum.Font.Gotham,
+        },
+        FontSizes = {
+            Body = 16,
+            Button = 18,
+            HUD = 24,
+        }
+    }
+    self.SystemMonitor:Log("StyleService", "INFO", "THEME_LOADED", ("Tema '%s' berhasil dimuat."):format(self.activeThemeName))
+end
+
+return StyleService
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Server/Services/SystemMonitor.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+--[[
+	@project OVHL_OJOL
+	@file SystemMonitor.lua
+	@author OmniverseHighland + AI Co-Dev System
+	
+	@description
+	Service terpusat untuk logging, monitoring, dan pelacakan kesehatan sistem.
+	Menyediakan format log yang standar untuk memudahkan debugging.
+]]
+
+local SystemMonitor = {}
+
+-- ServiceManager di-inject saat inisialisasi
+local serviceManager: any
+
+-- Dibuat sebagai singleton karena bersifat global
+function SystemMonitor:Initialize(sm: any)
+	if serviceManager then return end -- Sudah diinisialisasi
+	serviceManager = sm
+	self:Log("SystemMonitor", "INFO", "INIT_SUCCESS", "SystemMonitor siap digunakan.")
+end
+
+-- Fungsi logging utama
+function SystemMonitor:Log(source: string, level: "INFO" | "WARN" | "ERROR", code: string, message: string)
+	local logMessage = string.format("[%s] [%s] [%s] %s", source, code, level, message)
+	
+	if level == "ERROR" then
+		warn(logMessage)
+	elseif level == "WARN" then
+		warn(logMessage)
+	else
+		print(logMessage)
+	end
+	
+	-- TODO: Integrasi dengan log file atau webhook eksternal di masa depan
+end
+
+-- Stub kosong untuk memenuhi kontrak .new() dari Bootstrapper
+-- Inisialisasi sebenarnya terjadi di :Initialize()
+function SystemMonitor.new()
+	return SystemMonitor
+end
+
+return SystemMonitor
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Server/Services/ZoneService.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+--[[
+	@project OVHL_OJOL
+	@file ZoneService.lua (Server Service)
+	@author OmniverseHighland + AI Co-Dev System
+	
+	@description
+	Mengelola pembuatan dan deteksi zona interaktif di dalam Workspace.
+]]
+
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local ZoneService = {}
+ZoneService.__index = ZoneService
+local activeZones = {}
+
+function ZoneService.new(sm: any)
+	local self = setmetatable({}, ZoneService)
+	self.sm = sm
+	self.SystemMonitor = sm:Get("SystemMonitor")
+	return self
+end
+
+function ZoneService:Init()
+	self.SystemMonitor:Log("ZoneService", "INFO", "INIT_SUCCESS", "ZoneService siap digunakan.")
+end
+
+function ZoneService:CreateZoneForPlayer(player: Player, position: Vector3, onTouchedCallback: () -> ())
+	self:DestroyZoneForPlayer(player)
+	local zonePart = Instance.new("Part")
+	zonePart.Name = "MissionZone_" .. player.Name
+	zonePart.Size = Vector3.new(15, 1, 15)
+	zonePart.Position = position
+	zonePart.Anchored = true
+	zonePart.CanCollide = false
+	zonePart.Transparency = 0.7
+	zonePart.Color = Color3.fromRGB(76, 175, 80)
+	zonePart.Shape = Enum.PartType.Cylinder
+	zonePart.Parent = Workspace
+	local connection = zonePart.Touched:Connect(function(otherPart)
+		local character = otherPart.Parent
+		if not character then return end
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if not humanoid then return end
+		local touchingPlayer = Players:GetPlayerFromCharacter(character)
+		if touchingPlayer == player then
+			onTouchedCallback()
+			self:DestroyZoneForPlayer(player)
+		end
+	end)
+	activeZones[player] = {part = zonePart, connection = connection}
+	self.SystemMonitor:Log("ZoneService", "INFO", "ZONE_CREATED", ("Zona tujuan dibuat untuk '%s'"):format(player.Name))
+end
+
+function ZoneService:DestroyZoneForPlayer(player: Player)
+	local zoneData = activeZones[player]
+	if zoneData then
+		zoneData.connection:Disconnect()
+		zoneData.part:Destroy()
+		activeZones[player] = nil
+	end
+end
+
+return ZoneService
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Shared/Config.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+--[[
+	@project OVHL_OJOL
+	@file Config.lua
+	@author OmniverseHighland + AI Co-Dev System
+	
+	@description
+	Manifest Konfigurasi Global.
+	Semua pengaturan sistem yang bersifat statis dan dapat diubah
+	ada di sini. Akan dibaca oleh Bootstrapper saat startup.
+]]
+
+local Config = {
+	-- Pengaturan Umum
+	game_name = "Ojol Roleplay",
+	version = "1.0.0",
+	enable_debug_mode = true, -- Aktifkan log dan monitor tambahan
+
+	-- Pengaturan DataService
+	autosave_interval = 300, -- Interval autosave data pemain (dalam detik)
+	datastore_retry_attempts = 3, -- Jumlah percobaan ulang jika DataStore gagal
+	datastore_retry_delay = 5, -- Jeda antar percobaan ulang (dalam detik)
+	
+	-- Pengaturan Hot Reload
+	enable_hot_reload = true, -- Mengizinkan reload modul saat runtime
+
+	-- Pengaturan Ekonomi
+	economy_multiplier = 1.0, -- Pengali pendapatan default
+
+	-- Pengaturan Admin
+	admin_user_ids = {
+		1, -- UserId Roblox Studio (Owner)
+		-- Tambahkan ID admin lain di sini
+	},
+
+	-- Pengaturan StyleService (UI)
+	default_ui_theme = "default",
+}
+
+return table.freeze(Config)
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Core/Shared/Utils/Signal.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+--[[
+	@project OVHL_OJOL
+	@file Signal.lua
+	@author OmniverseHighland + AI Co-Dev System
+	
+	@description
+	Implementasi sederhana dari event/signal dispatcher untuk komunikasi
+	antar modul di sisi client tanpa coupling yang erat.
+]]
+
+local Signal = {}
+Signal.__index = Signal
+
+function Signal.new()
+	local self = setmetatable({}, Signal)
+	self.connections = {}
+	return self
+end
+
+function Signal:Connect(callback: () -> ())
+	table.insert(self.connections, callback)
+	-- Di implementasi production, bisa return connection object untuk disconnect
+end
+
+function Signal:Fire(...)
+	for _, callback in ipairs(self.connections) do
+		task.spawn(callback, ...)
+	end
+end
+
+return Signal
+
+
+
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+📄 FILE: Server/Init.server.lua
+〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️〰️
+
+--!strict
+--[[
+	@project OVHL_OJOL
+	@file Init.server.lua
+	@author OmniverseHighland + AI Co-Dev System
+	
+	@description
+	Titik masuk utama (entry point) untuk seluruh logika sisi server.
+	Skrip ini akan memanggil Bootstrapper untuk memulai Core OS.
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Core = ReplicatedStorage:WaitForChild("Core")
+local Bootstrapper = require(Core.Kernel.Bootstrapper)
+
+-- Memulai proses booting Core OS
+local status, pesan = pcall(function()
+	Bootstrapper:Start()
+end)
+
+if not status then
+	warn("!!! FATAL BOOTSTRAP ERROR !!!")
+	warn("Gagal memulai OVHL Core OS. Pesan Error:", pesan)
+end
+
+
+

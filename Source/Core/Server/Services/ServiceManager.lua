@@ -1,102 +1,93 @@
 --!strict
---[[
-	@project OVHL_OJOL
-	@file ServiceManager.lua
-	@author OmniverseHighland + AI Co-Dev System
-	
-	@description
-	Manajer pusat untuk semua service dan modul. Bertanggung jawab
-	untuk registrasi, dependency injection, dan mengelola lifecycle
-	(Init, Start, Stop) dari semua komponen sistem.
-]]
-
+--[[ @project OVHL_OJOL @file ServiceManager.lua (v2.0 FIXED) ]]
 local ServiceManager = {}
 ServiceManager.__index = ServiceManager
 
 function ServiceManager.new()
 	local self = setmetatable({}, ServiceManager)
-	self.services = {} -- [serviceName: string]: serviceInstance
-	self.modules = {} -- [moduleName: string]: moduleInstance
-	self.SystemMonitor = nil -- Akan di-inject oleh Bootstrapper
+	self.services = {}
+	self.modules = {}
+	self.SystemMonitor = nil -- Di-inject di Bootstrapper
 	return self
 end
 
--- Mendaftarkan instance service atau modul
 function ServiceManager:Register(name: string, instance: any)
 	if self.services[name] then
-		self:Get("SystemMonitor"):Log("ServiceManager", "WARN", "DUPLICATE_REGISTER", ("Service dengan nama '%s' sudah terdaftar. Registrasi baru diabaikan."):format(name))
+		self:Get("SystemMonitor"):Log("ServiceManager", "WARN", "DUPLICATE_REGISTER", ("Service '%s' sudah terdaftar."):format(name))
 		return
 	end
 	self.services[name] = instance
 end
 
--- Mendaftarkan modul dari manifest dan handler
 function ServiceManager:RegisterModule(manifest: table, handlerModule: ModuleScript)
 	if self.modules[manifest.name] then
-		self:Get("SystemMonitor"):Log("ServiceManager", "WARN", "DUPLICATE_MODULE", ("Modul dengan nama '%s' sudah terdaftar. Registrasi baru diabaikan."):format(manifest.name))
+		self:Get("SystemMonitor"):Log("ServiceManager", "WARN", "DUPLICATE_MODULE", ("Modul '%s' sudah terdaftar."):format(manifest.name))
 		return
 	end
-
-	local moduleInstance = {
-		manifest = manifest,
-		handler = require(handlerModule),
-		isStarted = false,
-	}
+	local moduleInstance = { manifest = manifest, handler = require(handlerModule), isStarted = false }
 	self.modules[manifest.name] = moduleInstance
+	self:Get("SystemMonitor"):Log("ServiceManager", "DEBUG", "MODULE_REGISTERED", ("Modul '%s' terdaftar"):format(manifest.name))
 end
 
--- Mendapatkan service yang sudah terdaftar
 function ServiceManager:Get(name: string)
 	local service = self.services[name]
 	if not service then
-		-- Menggunakan warn agar tidak menghentikan eksekusi, tapi tetap terlihat jelas
-		warn(("[ServiceManager] Peringatan: Service '%s' tidak ditemukan atau belum dimuat."):format(name))
+		warn(("[ServiceManager] Peringatan: Service '%s' tidak ditemukan."):format(name))
 	end
 	return service
 end
 
--- Memulai semua service dan modul sesuai urutan dependency
 function ServiceManager:StartAll()
 	local SystemMonitor = self:Get("SystemMonitor")
 	SystemMonitor:Log("ServiceManager", "INFO", "START_ALL", "Memulai semua service dan modul...")
 
-	-- Pertama, jalankan Init() pada semua service
+	-- Context table untuk dependency injection ke modul (INI DIA PERBAIKANNYA!)
+	local context = {}
+	for name, service in pairs(self.services) do
+		context[name] = service
+	end
+
+	-- Jalankan Init() pada semua service DULU
 	for name, service in pairs(self.services) do
 		if typeof(service.Init) == "function" then
 			local status, err = pcall(service.Init, service)
 			if not status then
-				SystemMonitor:Log("ServiceManager", "ERROR", "SERVICE_INIT_FAIL", ("Gagal menjalankan Init() pada service '%s'. Pesan: %s"):format(name, err))
+				SystemMonitor:Log("ServiceManager", "ERROR", "SERVICE_INIT_FAIL", ("Gagal Init() service '%s': %s"):format(name, err))
+			else
+				SystemMonitor:Log("ServiceManager", "DEBUG", "SERVICE_INIT_SUCCESS", ("Service '%s' di-init"):format(name))
 			end
 		end
 	end
 
-	-- Kedua, jalankan Init() pada semua modul yang dependensinya terpenuhi
+	-- Baru jalankan init() pada semua modul (inject context table)
 	for name, module in pairs(self.modules) do
-		if typeof(module.handler.Init) == "function" then
-			-- Cek dependency
+		SystemMonitor:Log("ServiceManager", "DEBUG", "MODULE_START_ATTEMPT", ("Mencoba memulai modul '%s'"):format(name))
+		if typeof(module.handler.init) == "function" then
 			local canStart = true
 			if module.manifest.depends then
 				for _, depName in ipairs(module.manifest.depends) do
 					if not self.services[depName] then
-						SystemMonitor:Log("ServiceManager", "ERROR", "MODULE_DEP_MISSING", ("Gagal memulai modul '%s' karena dependensi '%s' tidak ditemukan."):format(name, depName))
-						canStart = false
-						break
+						SystemMonitor:Log("ServiceManager", "ERROR", "MODULE_DEP_MISSING", ("Gagal memulai '%s', dependensi '%s' tidak ditemukan."):format(name, depName))
+						canStart = false; break
 					end
 				end
 			end
-			
 			if canStart then
-				local status, err = pcall(module.handler.Init, module.handler, self)
+				SystemMonitor:Log("ServiceManager", "DEBUG", "MODULE_STARTING", ("Memulai modul '%s'..."):format(name))
+				-- Inject 'context' table, BUKAN 'self'!
+				local status, err = pcall(module.handler.init, module.handler, context)
 				if not status then
-					SystemMonitor:Log("ServiceManager", "ERROR", "MODULE_INIT_FAIL", ("Gagal menjalankan Init() pada modul '%s'. Pesan: %s"):format(name, err))
+					SystemMonitor:Log("ServiceManager", "ERROR", "MODULE_INIT_FAIL", ("Gagal init() modul '%s': %s"):format(name, err))
 				else
 					module.isStarted = true
+					SystemMonitor:Log("ServiceManager", "INFO", "MODULE_START_SUCCESS", ("Modul '%s' berhasil dimulai"):format(name))
 				end
 			end
+		else
+			SystemMonitor:Log("ServiceManager", "ERROR", "MODULE_NO_INIT", ("Modul '%s' tidak punya function init()"):format(name))
 		end
 	end
-
-	SystemMonitor:Log("ServiceManager", "INFO", "START_ALL_COMPLETE", "Proses startup semua komponen selesai.")
+	SystemMonitor:Log("ServiceManager", "INFO", "START_ALL_COMPLETE", "Proses startup selesai.")
 end
 
 return ServiceManager
