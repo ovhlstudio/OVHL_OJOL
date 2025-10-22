@@ -13,6 +13,3 @@ rojo*.json.lock
 .vscode/
 .history/
 .DS_Store
-
-# Developer tools (local only)
-Tools/

@@ -1,7 +1,7 @@
 # 🚀 OVHL_OJOL_DEVELOPMENT.md
 > **Project:** Omniverse Highland — Ojol Roleplay  
 > **Core Engine:** OVHL Core  
-> **Version:** Stable v1.0 — Long Term Infrastructure Plan  
+> **Version:** Stable v1.0 — Long Term Infrastructure Plan  Beta Test
 > **Author:** OmniverseHighland + AI Co-Dev System  
 > **Last Updated:** 2025-10-21  
 
@@ -63,12 +63,29 @@ Untuk menjaga stabilitas dan kerapian proyek, kita mengadopsi alur kerja Git Flo
 “Ojol Roleplay” adalah game **simulasi kehidupan pekerja ojek online (ojol)** di dunia metaverse **Omniverse Highland**.  
 Pemain menjadi driver yang menjalani misi mengantarkan makanan, barang, atau penumpang dengan sistem **order real-time dan ekonomi dinamis**.  
 
-### Gameplay Loop
-- Pemain menerima order melalui aplikasi in-game (`OVHL App`).  
+### Gameplay Loop (Akan Berkembang Setelah Beta Test)
+- 24 Jam dunia game adalah 21 24 menit.
+- Pemain menerima order ojek / pickup makanan dari NPC Spawner melalui aplikasi in-game alias dalam hp (`OVHL App`).
+- NPC Spawner akan berada di posisi acar dengan random interval
+- sistem order akan acak tidak harus masuk ke pemain terdekat
+- pemain pertama yang masuk ke game akan mendapat uang saku yang wajib di belikan Motor.
+- pemain pertama akan mendapatkan handphone untuk kerja.
+- pemain wajib melamar dan memilih 1 perusahaan yang akan ada didalam game.
+- Pemain dapat menerima order ojek / makanan secara random dari NPC Spwaner.
 - Tiap order punya lokasi, estimasi waktu, dan variabel kondisi (cuaca, traffic, dll).  
 - Pemain bisa memilih upgrade kendaraan, membeli perlengkapan, dan bersosialisasi.  
 - Sistem **GamePass dan in-app purchases** dikontrol oleh Core Services.  
 - Semua transaksi dan progres pemain disimpan oleh `DataService`.  
+- Memiliki sistem mata uang Rupiah untuk hasil kerja.
+
+### Coomingson (Beta Test V2)
+- Antar pemain dapat saling melakukan order.
+- Koin UVHL untuk transaksi jual beli antar player yang harus didapatkan via robux.
+- sistem zona NPC spwaner, order trafic dll.
+- jual beli kendaraan atau barang lain antar player
+- fitur premium melalui game pass
+- dan masih akan banyak  fitur lainnya
+
 
 ### Vision
 Dirancang sebagai **MMORPG semi-ekonomi** yang terus berkembang,  
@@ -106,7 +123,7 @@ Saat AI atau developer menambahkan sistem baru:
    ```
 3. Gunakan `Bootstrapper:AttachModule("path")` untuk auto-injection.  
 4. Jangan ubah langsung file `Core/Kernel` — gunakan hook atau extension layer.  
-5. Setiap modul wajib mencatat dirinya di `OVHL_OJOL_LOGS.md`.  
+5. Setiap modul / fitur wajib mencatat dirinya di `OVHL_OJOL_LOGS.md` setelah play test no eror dengan lengkap mualai dari struktur, fuction dan detail lain yang dibutuhkan untuk dokumentasi.  
 
 ---
 
@@ -146,8 +163,11 @@ Core/
 
 ---
 
-## 🛠️ Aturan Main & Alur Kerja Pengembangan (Wajib Dibaca!)
-Bagian ini berisi aturan-aturan penting yang harus diikuti untuk menjaga proyek tetap rapi, stabil, dan mudah dikelola.
+## 🛠️ Aturan Main & Alur Kerja Pengembangan (Wajib Dibaca oleh AI dan Dev!)
+- Bagian ini berisi aturan-aturan penting yang harus diikuti untuk menjaga proyek tetap rapi, stabil, dan mudah dikelola.
+- AI Partner wajib selalu mengingatkan dan meminta untuk chek branch mana yang sedang digunakan.
+- Jika Anda AI Partner baru / sesi chat baru. WAJIB HUKUMNYA meminta dtruktur project yang sedang aktif dikerjakan di branch sebelum memulai analisa dan menerapkan coding.
+- Tools audit struktur sudah di sediakan di `Tools/Dev/audit_structure.sh`, akan menghasilkan 2 file txt file_contents dan file_structure.
 
 ### 1. Alur Kerja Git (`Git Flow`)
 Kita menggunakan alur kerja Git Flow yang ketat untuk semua pengembangan.
@@ -155,6 +175,7 @@ Kita menggunakan alur kerja Git Flow yang ketat untuk semua pengembangan.
 * **`main`**: Cabang suci. Hanya untuk versi rilis stabil. **DILARANG PUSH LANGSUNG.**
 * **`develop`**: Cabang integrasi. Dapur utama untuk semua fitur yang sudah selesai dan dites. Menerima *merge* dari `feature/...`.
 * **`feature/...`**: Cabang untuk mengerjakan fitur baru. **SELALU DIBUAT DARI `develop`**. Setelah selesai, di-*merge* kembali ke `develop`.
+* **`experiment/`**: jika ada ide dadakan dan belum dicatat di log wajib menggunakan ini.
 
 **Urutan Perintah Wajib Saat Memulai Fitur Baru:**
 ```bash
@@ -170,10 +191,11 @@ git push -u origin feature/nama-fitur-keren
 ```
 
 ### 2. Aturan Skrip Deployment (`.sh`)
-Semua penambahan atau perubahan besar pada struktur proyek dilakukan melalui skrip `.sh` di folder `Tools/`.
+- Semua penambahan fitur baru atau perubahan besar pada struktur proyek dilakukan melalui skrip `.sh` di folder `Tools/[Nama Unik Pekerjaan]/`.
+- Opsi kedua AI Partnet dpat memberikan script ready copy paste untu di eksekusi di bash jika tiak ada banyak file dan isi
 
-* **Izin Eksekusi (`chmod`):** Perintah `chmod +x Tools/nama-skrip-baru.sh` **HANYA PERLU DIJALANKAN SEKALI** saat file `.sh` baru pertama kali dibuat. Setelah itu, izin akan menempel selamanya.
-* **Eksekusi:** Untuk menjalankan skrip, selalu gunakan `./Tools/nama-skrip.sh`.
+* **Izin Eksekusi (`chmod`):** Perintah `chmod +x Tools/[Nama Unik Pekerjaan]/nama-skrip-baru.sh` **HANYA PERLU DIJALANKAN SEKALI** saat file `.sh` baru pertama kali dibuat. Setelah itu, izin akan menempel selamanya.
+* **Eksekusi:** Untuk menjalankan skrip, selalu gunakan `./Tools/[Nama Unik Pekerjaan]/nama-skrip.sh`.
 
 ### 3. Prosedur Debugging "Aneh"
 Jika output di Roblox Studio tidak sesuai dengan yang diharapkan (misal: fitur baru tidak muncul padahal kode sudah dieksekusi), **JANGAN LANGSUNG MENGUBAH KODE.** Lakukan prosedur ini terlebih dahulu:
@@ -249,8 +271,8 @@ Setiap perubahan besar (struktur, service, API, behavior) **harus:**
 
 | Phase | Objective | Status |
 |--------|------------|---------|
-| 1 | Stabilize OVHL Core Infrastructure | 🔜 |
-| 2 | Implement Admin Panel (Config + Style Integration) | 🔜 |
+| 1 | Stabilize OVHL Core Infrastructure | DONE |
+| 2 | Implement Admin Panel (Config + Style Integration) | Masih Error |
 | 3 | Expand StyleService (Live Theme Editor) | 🔜 |
 | 4 | Deploy Modular Gameplay Apps (Food, Delivery, Taxi) | 🔜 |
 | 5 | Economy & Job System | 🔜 |

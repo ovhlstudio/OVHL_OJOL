@@ -1,3 +1,10 @@
+#!/bin/bash
+
+echo "🚀 FASE 1: Setup Structure & Enhanced UIManager"
+
+# Create enhanced UIManager
+mkdir -p Source/Core/Client/Services
+cat > Source/Core/Client/Services/UIManager.lua << 'EOF'
 --!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -306,3 +313,8 @@ function UIManager:ShowToastNotification(message: string, duration: number?)
 end
 
 return UIManager
+EOF
+
+echo "✅ FASE 1 SELESAI: Enhanced UIManager dengan 4 components baru"
+echo "📝 TEST INSTRUCTION: Rojo build & check di Studio - UIManager harus ada methods baru"
+echo "🚀 LANJUT KE FASE 2: ./Tools/operasi-dashboard-x/fase_2_devtester.sh"

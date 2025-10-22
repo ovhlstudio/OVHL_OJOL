@@ -1,9 +1,4 @@
 --!strict
---[[
-	@file DataService.lua
-	@version 2.2.0
-	@description Kini mengirim update data ke client saat ada perubahan.
-]]
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local Core = game:GetService("ReplicatedStorage"):WaitForChild("Core")
@@ -14,52 +9,86 @@ local ProfileTemplate = { Uang = 5000, Level = 1, XP = 0 }
 local function deepCopy(t: table) local nt = {} for k, v in pairs(t) do nt[k] = (typeof(v) == "table") and deepCopy(v) or v end return nt end
 
 function DataService.new(sm: any)
-	local self = setmetatable({}, DataService)
-	self.sm = sm
-	self.SystemMonitor = sm:Get("SystemMonitor")
-	self.playerDataStore = DataStoreService:GetDataStore("OVHL_PlayerData_v1")
-	self.playerDataCache = {}
-	return self
+    local self = setmetatable({}, DataService)
+    self.sm = sm
+    self.SystemMonitor = sm:Get("SystemMonitor")
+    self.playerDataStore = DataStoreService:GetDataStore("OVHL_PlayerData_v1")
+    self.globalDataStore = DataStoreService:GetDataStore("OVHL_GlobalData_v1")
+    self.playerDataCache = {}
+    self.globalDataCache = {}
+    return self
 end
 
 function DataService:Init()
-	Players.PlayerAdded:Connect(function(p) self:_onPlayerAdded(p) end)
-	Players.PlayerRemoving:Connect(function(p) self:_onPlayerRemoving(p) end)
-	game:BindToClose(function() self:_onServerShutdown() end)
-	task.spawn(function() self:_autoSaveLoop() end)
-	self.SystemMonitor:Log("DataService", "INFO", "INIT_SUCCESS", "DataService berhasil diinisialisasi.")
+    Players.PlayerAdded:Connect(function(p) self:_onPlayerAdded(p) end)
+    Players.PlayerRemoving:Connect(function(p) self:_onPlayerRemoving(p) end)
+    game:BindToClose(function() self:_onServerShutdown() end)
+    task.spawn(function() self:_autoSaveLoop() end)
+    self.SystemMonitor:Log("DataService", "INFO", "INIT_SUCCESS", "DataService berhasil diinisialisasi.")
 end
 
 function DataService:GetData(player: Player) return self.playerDataCache[player] end
 
 function DataService:AddUang(player: Player, amount: number)
-	local data = self:GetData(player)
-	if data and typeof(data.Uang) == "number" then
-		data.Uang += amount
-		self.SystemMonitor:Log("DataService", "INFO", "DATA_UPDATED", ("Uang pemain '%s' +%d. Total: %d"):format(player.Name, amount, data.Uang))
-		
-		-- Kirim update ke client
-		local EventService = self.sm:Get("EventService")
-		if EventService then
-			EventService:FireClient(player, "UpdatePlayerData", {Uang = data.Uang})
-		end
-	end
+    local data = self:GetData(player)
+    if data and typeof(data.Uang) == "number" then
+        data.Uang += amount
+        self.SystemMonitor:Log("DataService", "INFO", "DATA_UPDATED", ("Uang pemain '%s' +%d. Total: %d"):format(player.Name, amount, data.Uang))
+        
+        -- Kirim update ke client
+        local EventService = self.sm:Get("EventService")
+        if EventService then
+            EventService:FireClient(player, "UpdatePlayerData", {Uang = data.Uang})
+        end
+    end
+end
+
+-- NEW METHODS FOR GLOBAL CONFIG
+function DataService:GetGlobal(key: string?)
+    if not self.globalDataCache then
+        self.globalDataCache = {}
+    end
+    
+    if key then
+        return self.globalDataCache[key]
+    else
+        return self.globalDataCache
+    end
+end
+
+function DataService:SetGlobal(key: string, value: any)
+    if not self.globalDataCache then
+        self.globalDataCache = {}
+    end
+    
+    self.globalDataCache[key] = value
+    
+    -- Save to DataStore async
+    task.spawn(function()
+        local success, err = pcall(function()
+            self.globalDataStore:SetAsync("OVHL_CONFIG", self.globalDataCache)
+        end)
+        
+        if not success then
+            self.SystemMonitor:Log("DataService", "ERROR", "GLOBAL_SAVE_FAIL", ("Gagal menyimpan config global: %s"):format(tostring(err)))
+        end
+    end)
 end
 
 function DataService:_onPlayerAdded(player: Player) self:_loadPlayerData(player) end
 function DataService:_onPlayerRemoving(player: Player) self:_savePlayerData(player) self.playerDataCache[player] = nil end
 
 function DataService:_loadPlayerData(player: Player)
-	local userId = "Player_" .. player.UserId
-	local success, data = pcall(function() return self.playerDataStore:GetAsync(userId) end)
-	if success then
-		self.playerDataCache[player] = data or deepCopy(ProfileTemplate)
-		task.wait(1)
-		local EventService = self.sm:Get("EventService")
-		if EventService then EventService:FireClient(player, "PlayerDataReady") end
-	else
-		player:Kick("Gagal memuat data Anda.")
-	end
+    local userId = "Player_" .. player.UserId
+    local success, data = pcall(function() return self.playerDataStore:GetAsync(userId) end)
+    if success then
+        self.playerDataCache[player] = data or deepCopy(ProfileTemplate)
+        task.wait(1)
+        local EventService = self.sm:Get("EventService")
+        if EventService then EventService:FireClient(player, "PlayerDataReady") end
+    else
+        player:Kick("Gagal memuat data Anda.")
+    end
 end
 
 function DataService:_savePlayerData(player: Player) if not self.playerDataCache[player] then return end pcall(function() self.playerDataStore:SetAsync("Player_" .. player.UserId, self.playerDataCache[player]) end) end

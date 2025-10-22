@@ -1,0 +1,31 @@
+=== OVHL PROJECT STRUCTURE ===
+Generated on: Wed, Oct 22, 2025 02:03:12
+Branch: feature/admin-panel-v1
+==============================
+
+📂 PROJECT STRUCTURE:
+Client/Init.client.lua
+Core/Client/ClientBootstrapper.lua
+Core/Client/Controllers/OrderController.lua
+Core/Client/Controllers/PlayerDataController.lua
+Core/Client/Modules/DevUITester/Main.lua
+Core/Client/Services/UIManager.lua
+Core/Client/UI/MainHUD.lua
+Core/Kernel/Bootstrapper.lua
+Core/Server/Modules/DevUITester/Handler.lua
+Core/Server/Modules/DevUITester/manifest.lua
+Core/Server/Modules/TestOrder/Handler.lua
+Core/Server/Modules/TestOrder/manifest.lua
+Core/Server/Services/DataService.lua
+Core/Server/Services/EventService.lua
+Core/Server/Services/ServiceManager.lua
+Core/Server/Services/StyleService.lua
+Core/Server/Services/SystemMonitor.lua
+Core/Server/Services/ZoneService.lua
+Core/Shared/Config.lua
+Core/Shared/Utils/Signal.lua
+Server/Init.server.lua
+
+=== SUMMARY ===
+Total Lua files: 21
+Total folders: 21
