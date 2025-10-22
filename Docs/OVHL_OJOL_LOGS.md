@@ -58,6 +58,43 @@ Client berhasil memanggil server event dengan response valid.
 ---
 # LOG BARU MULAI DARI SINI
 
+### \[2025-10-22 | 11:21:00\] \[🧠 STRATEGI\] Sesi Diskusi Blueprint v4.0 & Finalisasi "Operasi Ojol Perdana"
+
+**Kolaborator:** Hanif Saifudin (Lead Dev) & Gemini (AI Co-Dev)
+**Tujuan Log:** Mencatat proses iterasi dan kesepakatan-kesepakatan kunci dalam perancangan arsitektur gameplay Beta v1.
+
+<details> <summary><strong>Klik untuk membuka rangkuman detail sesi...</strong></summary>
+
+#### **BAGIAN 1: KONTEKS & VISI AWAL**
+Setelah berhasil menstabilkan `Core OS` (via `feature/admin-panel-v1`), diskusi beralih dari "perbaikan prototipe" ke "pembangunan gameplay inti". Lead Dev (Hanif) memaparkan 15 poin visi "Real Life Ojol", yang menjadi dasar dari *blueprint* baru.
+
+#### **BAGIAN 2: ITERASI BLUEPRINT & KESEPAKATAN TEKNIS**
+Kami melakukan beberapa kali iterasi pada dokumen `OVHL_ROADMAP_FINAL.md (v4.0)` dan menyepakati beberapa "Filosofi Desain" kunci:
+1.  **Filosofi #4 (Tag-Driven World):** Disepakati bahwa semua interaksi dunia (Dealer, Kantor, Zona Spawn NPC) **WAJIB** menggunakan `CollectionService:GetTagged()`. Ini memisahkan tugas *Builder* (yang hanya perlu memberi Tag) dari *Scripter*.
+2.  **Logika Hibrid (Anti-Gagal):** Untuk fitur NPC naik motor (FASE 5), disepakati logika hibrid:
+    -   **Prioritas 1:** Skrip mencari `Seat` bernama `PassengerSeat`.
+    -   **Prioritas 2 (Fallback):** Jika `Seat` tidak ada, skrip akan menggunakan `WeldConstraint` (Lem) ke `JokBelakangPart`.
+3.  **Ekonomi "Real Life" (Anti-Simpel):**
+    -   **`CompanyModule` (FASE 3)** ditetapkan sebagai **"Otak Ekonomi Mikro"**. Modul ini akan mengatur *Config* (`tarif_dasar`, `komisi`, `sanksi`) untuk setiap player.
+    -   **`ProgressionModule` (FASE 7)** disetujui sebagai **"Auditor"**. Modul ini akan menjalankan logika "Upgrade Paksa" (memberi sanksi jika player malas *upgrade* motor).
+4.  **Auto-Scaling NPC (Anti-Sepi):** `NPCSpawnerModule` (FASE 4) disepakati akan memiliki logika *auto-scaling* yang *menaikkan* `spawn_rate` berdasarkan jumlah `PlayerCount` di server.
+5.  **Event Dinamis (Anti-Statis):** Disetujui penambahan `WeatherModule` (FASE 8) untuk "Tarif Hujan" dan `GlobalEconomyModule` (FASE 9) untuk "Event Jam Sibuk / Berkah".
+
+#### **BAGIAN 3: HUKUM WAJIB AI (META-WORKFLOW)**
+
+Selama diskusi, kami juga menetapkan "Hukum Wajib" baru untuk kolaborasi AI Co-Dev di masa depan:
+1.  **Aturan `.sh` (Anti-HumanError):** Jika AI perlu menyarankan penambahan fungsi baru ke *Core Service* (seperti `DataService.lua`), AI **wajib** menyediakan skrip `.sh` (menggunakan `sed` atau `awk`) yang bisa *menyuntikkan* kode tersebut secara otomatis, alih-alih meminta dev mengirim file asli.
+2.  **Aturan "No Placeholder" (Anti-Bingung):** AI Co-Dev **DILARANG KERAS** menggunakan *placeholder* (seperti `[Immersive content redacted...]`) dalam *output* file, baik itu kode, dokumen, atau log. Semua *output* file harus 100% utuh.
+3.  **Aturan "RAW Markdown" (Anti-Format):** Untuk dokumen `.md`, AI Co-Dev harus selalu menyajikan *output* di dalam *nested code block* (\`\`\`markdown) untuk memastikan format teks mentah 100% aman untuk di-copas.
+
+#### **HASIL AKHIR**
+Sesi ini menghasilkan dokumen kunci yang telah disetujui (`ACC`) oleh Lead Dev:
+1.  `OVHL_OJOL_GAMEPLAY_BETA.md` (Gabungan dokumen di atas)
+
+Proyek kini 100% siap untuk memulai **"OPERASI OJOL PERDANA"**, dimulai dari FASE 0 (Persiapan Git).
+
+</details>
+
 ### \[2025-10-22 | 09:55:00\] \[✅ MILESTONE\] \[🐞 BUGFIX\] \[CORE\] \[PROTOTYPE\]
 
 **Judul:** Fase 2 Selesai - Admin Panel Prototype (Config) Stabil & Server Crash Dibereskan. **Kolaborator:** Hanif Saifudin (Lead Dev) & Gemini (AI Co-Dev) **Branch:** `feature/admin-panel-v1`
@@ -69,21 +106,15 @@ Client berhasil memanggil server event dengan response valid.
 ##### **Masalah Awal:**
 
 -   Saat testing Fase 2 (Admin Panel), server gagal booting.
-
 -   Log Output menunjukkan error fatal: `[MODULE_INIT_FAIL] [ERROR] Gagal menjalankan init() pada modul 'AdminPanel' ... attempt to index nil with 'Get'`
-
 -   Error yang sama juga terjadi pada modul `TestOrder`, menandakan ini adalah masalah sistemik pada **Core OS**, bukan cuma di AdminPanel.
 
 ##### **Akar Masalah (Root Cause):**
 
 -   **Kesalahan Arsitektur di `ServiceManager.lua` (TAHAP 4)**.
-
 -   `ServiceManager` versi lama salah mengimplementasikan *dependency injection*.
-
 -   Dia mem-passing `self` (instansi `ServiceManager` itu sendiri) ke dalam fungsi `module.handler:init(self)`.
-
 -   Padahal, semua modul (seperti `AdminPanel` dan `TestOrder`) didesain untuk menerima `context table` (sebuah tabel berisi *semua* service, contoh: `context.SystemMonitor`).
-
 -   Akibatnya, `context.SystemMonitor` menjadi `nil` dan server *crash*.
 
 #### **BAGIAN 2: PROSES PERBAIKAN (TAHAP 4 & 5)**
@@ -91,69 +122,42 @@ Client berhasil memanggil server event dengan response valid.
 ##### **Solusi TAHAP 4: Perbaikan Arsitektur `ServiceManager` (3 File)**
 
 1.  **`Core/Server/Services/ServiceManager.lua` (4.1):**
-
     -   Fungsi `StartAll()` dirombak total.
-
     -   Sekarang dia membuat `context` *table* baru.
-
     -   `context` table ini diisi dengan *semua* service yang terdaftar (misal: `context.DataService = ...`, `context.EventService = ...`).
-
     -   `context` table inilah yang sekarang di-pass ke `module.handler:init(context)`.
-
 2.  **`Core/Server/Modules/AdminPanel/Handler.lua` (4.2):**
-
     -   Fungsi `init(context)` diubah untuk membaca `context` table.
-
     -   Semua pengambilan service (misal: `self.SystemMonitor = context.SystemMonitor`) sekarang berjalan sukses.
-
 3.  **`Core/Server/Modules/TestOrder/Handler.lua` (4.3):**
-
     -   Diberi perlakuan yang sama dengan `AdminPanel`.
-
     -   Fungsi `init(context)` diubah untuk membaca `context` table.
-
     -   **Hasil TAHAP 4:** Server nyala, `[MODULE_INIT_FAIL]` hilang.
 
 ##### **Solusi TAHAP 5: Perbaikan Masalah Keamanan (`[UNAUTHORIZED]`)**
-
 -   **Masalah Baru:** Server sukses nyala, tapi Admin Panel ditolak akses (`[UNAUTHORIZED] [WARN] ... mencoba akses ... tanpa izin`).
-
 -   **Akar Masalah:** Fungsi `IsAdmin()` di `AdminPanel/Handler.lua` terlalu ketat untuk testing di Studio.
-
 -   **Solusi (5.1):**
-
     -   `Core/Server/Modules/AdminPanel/Handler.lua` di-update.
-
     -   Fungsi `IsAdmin()` ditambahi logika `if game:GetService("RunService"):IsStudio() then return true end`.
-
     -   Ini memberikan akses admin otomatis *hanya* saat testing di Studio.
 
 #### **BAGIAN 3: HASIL AKHIR & STATUS**
 
 -   **Hasil Test Final:** **NO ERROR.**
-
 -   `AdminPanel` berhasil kebuka.
-
 -   `AdminPanel` berhasil memanggil `AdminGetConfig` dan menampilkan data *live* (1.0 dan 0.8).
-
 -   `AdminPanel` berhasil memanggil `AdminUpdateConfig` (mengubah ke 2.0 dan 0.5).
-
 -   Data berhasil tersimpan di `DataService` (dibuktikan dengan *re-open* panel).
-
 -   Gameplay loop (`TestOrder`) juga berjalan normal bersamaan.
 
 **Catatan Prototype:**
-
 -   Admin Panel ini masih *prototype*. Fungsinya baru sebatas membaca/menulis config `economy_multiplier` dan `ai_population_density` ke `DataService`.
-
 -   Saat ini, **belum ada** ***logic*** **gameplay** (seperti `TestOrder`) yang *menggunakan* nilai-nilai config ini.
-
 -   Implementasi *Hot Reload* (`Reload Module`) juga masih `TODO` (fitur Fase 3).
 
 **Status Proyek:**
-
 -   **Fase 2 (Implement Admin Panel Prototype - Config) SELESAI & STABIL.**
-
 -   Server *crash* teratasi.
 
 </details>
