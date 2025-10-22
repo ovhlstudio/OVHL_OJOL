@@ -1,24 +1,24 @@
 === OVHL PROJECT STRUCTURE ===
-Generated on: Wed, Oct 22, 2025 09:05:28
-Branch: feature/admin-panel-v1
+Generated on: Wed, Oct 22, 2025 16:36:05
+Branch: unknown
 ==============================
 
 📂 PROJECT STRUCTURE:
 Client/Init.client.lua
 Core/Client/ClientBootstrapper.lua
-Core/Client/Controllers/OrderController.lua
-Core/Client/Controllers/PlayerDataController.lua
-Core/Client/Modules/AdminPanel/Main.lua
-Core/Client/Modules/DevUITester/Main.lua
+Core/Client/Modules/MainHUD/ClientManifest.lua
+Core/Client/Modules/MainHUD/Main.lua
+Core/Client/Modules/ModPrototypeA/ClientManifest.lua
+Core/Client/Modules/ModPrototypeA/Main.lua
+Core/Client/Modules/ModPrototypeB/ClientManifest.lua
+Core/Client/Modules/ModPrototypeB/Main.lua
+Core/Client/Modules/ModPrototypeC/ClientManifest.lua
+Core/Client/Modules/ModPrototypeC/Main.lua
+Core/Client/Modules/ModPrototypeD/ClientManifest.lua
+Core/Client/Modules/PlayerDataController/ClientManifest.lua
+Core/Client/Modules/PlayerDataController/Main.lua
 Core/Client/Services/UIManager.lua
-Core/Client/UI/MainHUD.lua
 Core/Kernel/Bootstrapper.lua
-Core/Server/Modules/AdminPanel/Handler.lua
-Core/Server/Modules/AdminPanel/manifest.lua
-Core/Server/Modules/DevUITester/Handler.lua
-Core/Server/Modules/DevUITester/manifest.lua
-Core/Server/Modules/TestOrder/Handler.lua
-Core/Server/Modules/TestOrder/manifest.lua
 Core/Server/Services/DataService.lua
 Core/Server/Services/EventService.lua
 Core/Server/Services/ServiceManager.lua
@@ -31,4 +31,4 @@ Server/Init.server.lua
 
 === SUMMARY ===
 Total Lua files: 24
-Total folders: 23
+Total folders: 20
